@@ -99,11 +99,16 @@ compose.desktop {
         mainClass = "app.cadence.MainKt"
 
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Exe, TargetFormat.Deb)
             packageName = "Cadence"
             packageVersion = "1.0.0"
             description = "A free, open-source music player"
             vendor = "Cadence"
+
+            windows {
+                menuGroup = "Cadence"
+                upgradeUuid = "f0e9b2f4-4c2f-4b7e-9e2d-8a7d1c5b3a10"
+            }
         }
     }
 }

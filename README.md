@@ -63,14 +63,17 @@ SKIKO_RENDER_API=SOFTWARE ./gradlew :composeApp:run
 # Linux .deb
 ./gradlew :composeApp:packageDeb
 
-# Windows .msi
+# Windows .msi / .exe (run on Windows with JDK 17; MSI requires WiX Toolset)
 ./gradlew :composeApp:packageMsi
+./gradlew :composeApp:packageExe
 
-# macOS .dmg
+# macOS .dmg (run on macOS)
 ./gradlew :composeApp:packageDmg
 ```
 
-Installers are written to `composeApp/build/compose/binaries/`.
+Installers are written to `composeApp/build/compose/binaries/`. Release
+packages for Linux, Windows, and macOS are also built automatically by the
+`Build desktop packages` GitHub Actions workflow (`.github/workflows/build-release.yml`).
 
 ### Build the Android app
 
