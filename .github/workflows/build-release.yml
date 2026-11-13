@@ -1,0 +1,71 @@
+name: Build desktop packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to attach assets to (e.g. v0.1.0). Leave empty to only upload workflow artifacts."
+        required: false
+        type: string
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            build_cmd: "./gradlew :composeApp:packageReleaseExe --no-daemon && (./gradlew :composeApp:packageReleaseMsi --no-daemon || echo 'MSI packaging failed (WiX may be unavailable); EXE was built.')"
+            artifact_glob: "composeApp/build/compose/binaries/main-release/{msi,exe}/*"
+          - os: ubuntu-latest
+            build_cmd: "./gradlew :composeApp:packageReleaseDeb --no-daemon"
+            artifact_glob: "composeApp/build/compose/binaries/main-release/deb/*"
+          - os: macos-latest
+            build_cmd: "./gradlew :composeApp:packageReleaseDmg --no-daemon"
+            artifact_glob: "composeApp/build/compose/binaries/main-release/dmg/*"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build packages
+        shell: bash
+        run: ${{ matrix.build_cmd }}
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cadence-${{ matrix.os }}
+          path: ${{ matrix.artifact_glob }}
+          if-no-files-found: error
+
+      - name: Attach to release
+        if: github.event_name == 'release' || inputs.release_tag != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.release_tag }}
+        shell: bash
+        run: |
+          shopt -s nullglob
+          files=(composeApp/build/compose/binaries/main-release/msi/* composeApp/build/compose/binaries/main-release/exe/* composeApp/build/compose/binaries/main-release/deb/* composeApp/build/compose/binaries/main-release/dmg/*)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No release files found" >&2
+            exit 1
+          fi
+          gh release upload "$TAG" "${files[@]}" --clobber
