@@ -15,15 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.PlaylistAdd
-import androidx.compose.material.icons.rounded.PlaylistPlay
-import androidx.compose.material.icons.rounded.PlaylistRemove
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -47,6 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.cadence.model.Playlist
 import app.cadence.model.Track
+import app.cadence.ui.icons.CadenceIcons
 import app.cadence.ui.theme.Accent
 import app.cadence.ui.theme.Surface2
 import app.cadence.ui.theme.TextPrimary
@@ -168,7 +160,7 @@ private fun TrackMenu(
             modifier = Modifier.size(30.dp),
         ) {
             Icon(
-                Icons.Rounded.MoreVert,
+                CadenceIcons.MoreVert,
                 contentDescription = "More options for ${track.title}",
                 tint = TextSecondary,
                 modifier = Modifier.size(18.dp),
@@ -181,7 +173,7 @@ private fun TrackMenu(
         ) {
             DropdownMenuItem(
                 text = { Text("Play next", style = MaterialTheme.typography.bodyMedium) },
-                leadingIcon = { Icon(Icons.Rounded.PlaylistPlay, null, Modifier.size(18.dp)) },
+                leadingIcon = { Icon(CadenceIcons.PlaylistPlay, null, Modifier.size(18.dp)) },
                 onClick = {
                     open = false
                     onPlayNext()
@@ -189,7 +181,7 @@ private fun TrackMenu(
             )
             DropdownMenuItem(
                 text = { Text("Add to queue", style = MaterialTheme.typography.bodyMedium) },
-                leadingIcon = { Icon(Icons.Rounded.PlaylistAdd, null, Modifier.size(18.dp)) },
+                leadingIcon = { Icon(CadenceIcons.PlaylistAdd, null, Modifier.size(18.dp)) },
                 onClick = {
                     open = false
                     onAddToQueue()
@@ -208,7 +200,7 @@ private fun TrackMenu(
                                 overflow = TextOverflow.Ellipsis,
                             )
                         },
-                        leadingIcon = { Icon(Icons.Rounded.PlaylistAdd, null, Modifier.size(18.dp)) },
+                        leadingIcon = { Icon(CadenceIcons.PlaylistAdd, null, Modifier.size(18.dp)) },
                         onClick = {
                             open = false
                             onAddToPlaylist(playlist.id)
@@ -219,7 +211,7 @@ private fun TrackMenu(
 
             DropdownMenuItem(
                 text = { Text("New playlist…", style = MaterialTheme.typography.bodyMedium) },
-                leadingIcon = { Icon(Icons.Rounded.Add, null, Modifier.size(18.dp)) },
+                leadingIcon = { Icon(CadenceIcons.Add, null, Modifier.size(18.dp)) },
                 onClick = {
                     open = false
                     newPlaylistOpen = true
@@ -230,7 +222,7 @@ private fun TrackMenu(
                 HorizontalDivider(color = Color(0x14FFFFFF))
                 DropdownMenuItem(
                     text = { Text("Remove from playlist", style = MaterialTheme.typography.bodyMedium) },
-                    leadingIcon = { Icon(Icons.Rounded.PlaylistRemove, null, Modifier.size(18.dp)) },
+                    leadingIcon = { Icon(CadenceIcons.PlaylistRemove, null, Modifier.size(18.dp)) },
                     onClick = {
                         open = false
                         onRemoveFromPlaylist()
@@ -242,7 +234,7 @@ private fun TrackMenu(
                 HorizontalDivider(color = Color(0x14FFFFFF))
                 DropdownMenuItem(
                     text = { Text("Remove from library", style = MaterialTheme.typography.bodyMedium) },
-                    leadingIcon = { Icon(Icons.Rounded.DeleteOutline, null, Modifier.size(18.dp)) },
+                    leadingIcon = { Icon(CadenceIcons.DeleteOutline, null, Modifier.size(18.dp)) },
                     onClick = {
                         open = false
                         onForget()
@@ -367,7 +359,7 @@ fun SearchField(
         placeholder = { Text(placeholder, style = MaterialTheme.typography.bodyMedium, color = TextTertiary) },
         leadingIcon = {
             Icon(
-                androidx.compose.material.icons.Icons.Rounded.Search,
+                CadenceIcons.Search,
                 contentDescription = null,
                 tint = TextTertiary,
                 modifier = Modifier.size(18.dp),
@@ -377,7 +369,7 @@ fun SearchField(
             if (value.isNotEmpty()) {
                 IconButton(onClick = { onValueChange("") }, modifier = Modifier.size(28.dp)) {
                     Icon(
-                        androidx.compose.material.icons.Icons.Rounded.Close,
+                        CadenceIcons.Close,
                         contentDescription = "Clear search",
                         tint = TextSecondary,
                         modifier = Modifier.size(16.dp),

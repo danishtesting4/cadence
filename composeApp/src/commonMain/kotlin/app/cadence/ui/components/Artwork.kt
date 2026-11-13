@@ -25,8 +25,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -52,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import app.cadence.model.Track
 import app.cadence.platform.Platform
 import app.cadence.platform.toImageBitmap
+import app.cadence.ui.icons.CadenceIcons
 import app.cadence.ui.theme.Accent
 import app.cadence.ui.theme.AccentDeep
 import app.cadence.ui.theme.Bg0
@@ -118,7 +117,7 @@ fun Artwork(track: Track?, modifier: Modifier = Modifier, corner: Dp = 10.dp) {
             )
         } else {
             Icon(
-                imageVector = Icons.Rounded.MusicNote,
+                imageVector = CadenceIcons.MusicNote,
                 contentDescription = null,
                 tint = TextSecondary.copy(alpha = 0.55f),
                 modifier = Modifier.fillMaxSize(0.34f),
@@ -273,7 +272,7 @@ fun EmptyPlaylists(onCreate: () -> Unit, modifier: Modifier = Modifier) {
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                Icons.Rounded.MusicNote,
+                CadenceIcons.MusicNote,
                 contentDescription = null,
                 tint = Accent.copy(alpha = 0.8f),
                 modifier = Modifier.size(48.dp),
@@ -310,7 +309,7 @@ fun PlaylistMosaic(tracks: List<Track>, modifier: Modifier = Modifier) {
         if (tracks.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Icon(
-                    Icons.Rounded.MusicNote,
+                    CadenceIcons.MusicNote,
                     contentDescription = null,
                     tint = TextSecondary.copy(alpha = 0.5f),
                     modifier = Modifier.fillMaxSize(0.3f),

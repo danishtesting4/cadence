@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,6 +34,7 @@ import app.cadence.model.Track
 import app.cadence.player.PlayerController
 import app.cadence.ui.components.Artwork
 import app.cadence.ui.components.SectionLabel
+import app.cadence.ui.icons.CadenceIcons
 import app.cadence.ui.theme.Accent
 import app.cadence.ui.theme.Bg1
 import app.cadence.ui.theme.Hairline
@@ -65,7 +64,7 @@ fun QueuePanel(
                 )
             }
             IconButton(onClick = onClose, modifier = Modifier.size(34.dp)) {
-                Icon(Icons.Rounded.Close, contentDescription = "Close queue", tint = TextSecondary)
+                Icon(CadenceIcons.Close, contentDescription = "Close queue", tint = TextSecondary)
             }
         }
         HorizontalDivider(color = Hairline)

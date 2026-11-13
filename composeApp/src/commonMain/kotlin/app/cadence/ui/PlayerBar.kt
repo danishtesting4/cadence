@@ -18,18 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.QueueMusic
-import androidx.compose.material.icons.rounded.Repeat
-import androidx.compose.material.icons.rounded.RepeatOne
-import androidx.compose.material.icons.rounded.Shuffle
-import androidx.compose.material.icons.rounded.SkipNext
-import androidx.compose.material.icons.rounded.SkipPrevious
-import androidx.compose.material.icons.rounded.VolumeOff
-import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -62,6 +50,7 @@ import app.cadence.player.PlayerController
 import app.cadence.player.PlayerUiState
 import app.cadence.player.RepeatMode
 import app.cadence.ui.components.Artwork
+import app.cadence.ui.icons.CadenceIcons
 import app.cadence.ui.theme.Accent
 import app.cadence.ui.theme.Bg0
 import app.cadence.ui.theme.Bg1
@@ -175,7 +164,7 @@ fun DesktopPlayerBar(
                     }
                     IconButton(onClick = onToggleQueue) {
                         Icon(
-                            Icons.Rounded.QueueMusic,
+                            CadenceIcons.QueueMusic,
                             contentDescription = "Up next",
                             tint = if (queueOpen) Accent else TextSecondary,
                         )
@@ -199,7 +188,7 @@ fun TransportControls(
     ) {
         IconButton(onClick = player::toggleShuffle) {
             Icon(
-                Icons.Rounded.Shuffle,
+                CadenceIcons.Shuffle,
                 contentDescription = "Shuffle",
                 tint = if (state.shuffle) Accent else TextSecondary,
                 modifier = Modifier.size(if (large) 24.dp else 19.dp),
@@ -207,7 +196,7 @@ fun TransportControls(
         }
         IconButton(onClick = player::previous) {
             Icon(
-                Icons.Rounded.SkipPrevious,
+                CadenceIcons.SkipPrevious,
                 contentDescription = "Previous",
                 tint = TextPrimary,
                 modifier = Modifier.size(if (large) 34.dp else 26.dp),
@@ -223,7 +212,7 @@ fun TransportControls(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                imageVector = if (state.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                imageVector = if (state.isPlaying) CadenceIcons.Pause else CadenceIcons.PlayArrow,
                 contentDescription = if (state.isPlaying) "Pause" else "Play",
                 tint = Bg0,
                 modifier = Modifier.size(if (large) 34.dp else 24.dp),
@@ -231,7 +220,7 @@ fun TransportControls(
         }
         IconButton(onClick = player::next) {
             Icon(
-                Icons.Rounded.SkipNext,
+                CadenceIcons.SkipNext,
                 contentDescription = "Next",
                 tint = TextPrimary,
                 modifier = Modifier.size(if (large) 34.dp else 26.dp),
@@ -240,9 +229,9 @@ fun TransportControls(
         IconButton(onClick = player::cycleRepeat) {
             Icon(
                 imageVector = if (state.repeat == RepeatMode.ONE) {
-                    Icons.Rounded.RepeatOne
+                    CadenceIcons.RepeatOne
                 } else {
-                    Icons.Rounded.Repeat
+                    CadenceIcons.Repeat
                 },
                 contentDescription = "Repeat",
                 tint = if (state.repeat == RepeatMode.OFF) TextSecondary else Accent,
@@ -326,7 +315,7 @@ fun VolumeControl(volume: Float, onChange: (Float) -> Unit) {
             modifier = Modifier.size(32.dp),
         ) {
             Icon(
-                imageVector = if (muted) Icons.Rounded.VolumeOff else Icons.Rounded.VolumeUp,
+                imageVector = if (muted) CadenceIcons.VolumeOff else CadenceIcons.VolumeUp,
                 contentDescription = if (muted) "Unmute" else "Mute",
                 tint = TextSecondary,
                 modifier = Modifier.size(18.dp),
@@ -432,7 +421,7 @@ fun MiniPlayer(
                 }
                 IconButton(onClick = player::toggle, modifier = Modifier.size(38.dp)) {
                     Icon(
-                        if (state.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                        if (state.isPlaying) CadenceIcons.Pause else CadenceIcons.PlayArrow,
                         contentDescription = if (state.isPlaying) "Pause" else "Play",
                         tint = TextPrimary,
                         modifier = Modifier.size(24.dp),
@@ -440,7 +429,7 @@ fun MiniPlayer(
                 }
                 IconButton(onClick = player::next, modifier = Modifier.size(38.dp)) {
                     Icon(
-                        Icons.Rounded.SkipNext,
+                        CadenceIcons.SkipNext,
                         contentDescription = "Next",
                         tint = TextSecondary,
                         modifier = Modifier.size(22.dp),
@@ -471,7 +460,7 @@ fun NowPlayingHeader(onClose: () -> Unit, modifier: Modifier = Modifier) {
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
-                    Icons.Rounded.KeyboardArrowDown,
+                    CadenceIcons.KeyboardArrowDown,
                     contentDescription = "Close now playing",
                     tint = TextSecondary,
                     modifier = Modifier.size(22.dp),

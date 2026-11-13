@@ -27,12 +27,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.FolderOpen
-import androidx.compose.material.icons.rounded.GraphicEq
-import androidx.compose.material.icons.rounded.LibraryMusic
-import androidx.compose.material.icons.rounded.PlaylistPlay
-import androidx.compose.material.icons.rounded.QueueMusic
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -73,6 +67,7 @@ import app.cadence.model.Track
 import app.cadence.platform.createAudioEngine
 import app.cadence.player.PlayerController
 import app.cadence.ui.components.hoverBackground
+import app.cadence.ui.icons.CadenceIcons
 import app.cadence.ui.theme.Accent
 import app.cadence.ui.theme.AccentDeep
 import app.cadence.ui.theme.AppBackground
@@ -381,7 +376,7 @@ private fun Sidebar(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    Icons.Rounded.GraphicEq,
+                    CadenceIcons.GraphicEq,
                     contentDescription = null,
                     tint = Bg0,
                     modifier = Modifier.size(19.dp),
@@ -400,7 +395,7 @@ private fun Sidebar(
 
         SidebarItem(
             label = "Library",
-            icon = Icons.Rounded.LibraryMusic,
+            icon = CadenceIcons.LibraryMusic,
             selected = app.screen == Screen.Library,
         ) {
             app.screen = Screen.Library
@@ -410,7 +405,7 @@ private fun Sidebar(
         Spacer(Modifier.height(2.dp))
         SidebarItem(
             label = "Playlists",
-            icon = Icons.Rounded.QueueMusic,
+            icon = CadenceIcons.QueueMusic,
             selected = app.screen == Screen.Playlists && app.openPlaylistId == null,
         ) {
             app.screen = Screen.Playlists
@@ -440,7 +435,7 @@ private fun Sidebar(
             items(playlists, key = { it.id }) { playlist ->
                 SidebarItem(
                     label = playlist.name,
-                    icon = Icons.Rounded.PlaylistPlay,
+                    icon = CadenceIcons.PlaylistPlay,
                     selected = app.openPlaylistId == playlist.id,
                     small = true,
                 ) {
@@ -464,7 +459,7 @@ private fun Sidebar(
                 Text("Scanning…", style = MaterialTheme.typography.labelLarge, color = TextSecondary)
             } else {
                 Icon(
-                    Icons.Rounded.FolderOpen,
+                    CadenceIcons.FolderOpen,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp),
                     tint = TextSecondary,
@@ -538,7 +533,7 @@ private fun MobileNavBar(app: AppState) {
     ) {
         MobileNavItem(
             label = "Library",
-            icon = Icons.Rounded.LibraryMusic,
+            icon = CadenceIcons.LibraryMusic,
             selected = app.screen == Screen.Library,
             modifier = Modifier.weight(1f),
         ) {
@@ -548,7 +543,7 @@ private fun MobileNavBar(app: AppState) {
         }
         MobileNavItem(
             label = "Playlists",
-            icon = Icons.Rounded.QueueMusic,
+            icon = CadenceIcons.QueueMusic,
             selected = app.screen == Screen.Playlists,
             modifier = Modifier.weight(1f),
         ) {

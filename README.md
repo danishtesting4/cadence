@@ -76,14 +76,19 @@ Installers are written to `composeApp/build/compose/binaries/`.
 
 ```bash
 export ANDROID_HOME=/path/to/android-sdk
-./gradlew :composeApp:assembleDebug
+./gradlew :composeApp:assembleDebug     # debug APK
+./gradlew :composeApp:assembleRelease   # minified release APK (unsigned)
 ```
 
-The APK is written to
-`composeApp/build/outputs/apk/debug/composeApp-debug.apk`. Install it with:
+Artifacts:
+
+- Debug: `composeApp/build/outputs/apk/debug/composeApp-debug.apk`
+- Release (R8 minified + resources shrunk): `composeApp/build/outputs/apk/release/composeApp-release-unsigned.apk`
+
+Install with:
 
 ```bash
-adb install composeApp/build/outputs/apk/debug/composeApp-debug.apk
+adb install composeApp/build/outputs/apk/release/composeApp-release-unsigned.apk
 ```
 
 `local.properties` may also be used to point at the SDK:

@@ -22,15 +22,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.FolderOpen
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.SearchOff
-import androidx.compose.material.icons.rounded.Shuffle
-import androidx.compose.material.icons.rounded.Sort
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -67,6 +58,7 @@ import app.cadence.ui.components.SearchField
 import app.cadence.ui.components.TrackListHeader
 import app.cadence.ui.components.TrackRow
 import app.cadence.ui.components.hoverBackground
+import app.cadence.ui.icons.CadenceIcons
 import app.cadence.ui.theme.Accent
 import app.cadence.ui.theme.Bg0
 import app.cadence.ui.theme.TextPrimary
@@ -279,7 +271,7 @@ private fun LibraryHeader(
                         )
                     } else {
                         Icon(
-                            Icons.Rounded.FolderOpen,
+                            CadenceIcons.FolderOpen,
                             contentDescription = "Add music",
                             tint = TextSecondary,
                         )
@@ -322,7 +314,7 @@ private fun ImportButton(scanning: Boolean, onImport: () -> Unit) {
         if (scanning) {
             CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = Bg0)
         } else {
-            Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(CadenceIcons.Add, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
             Text("Add music", style = MaterialTheme.typography.labelLarge)
         }
@@ -335,7 +327,7 @@ private fun SortMenu(current: TrackSort, onSelect: (TrackSort) -> Unit) {
     Box {
         IconButton(onClick = { open = true }) {
             Icon(
-                Icons.Rounded.Sort,
+                CadenceIcons.Sort,
                 contentDescription = "Sort library",
                 tint = TextSecondary,
             )
@@ -346,7 +338,7 @@ private fun SortMenu(current: TrackSort, onSelect: (TrackSort) -> Unit) {
                     text = { Text(option.label, style = MaterialTheme.typography.bodyMedium) },
                     leadingIcon = {
                         if (option == current) {
-                            Icon(Icons.Rounded.Check, null, tint = Accent, modifier = Modifier.size(16.dp))
+                            Icon(CadenceIcons.Check, null, tint = Accent, modifier = Modifier.size(16.dp))
                         }
                     },
                     onClick = {
@@ -367,7 +359,7 @@ private fun NoMatches(query: String) {
     ) {
         Spacer(Modifier.weight(1f))
         Icon(
-            Icons.Rounded.SearchOff,
+            CadenceIcons.SearchOff,
             contentDescription = null,
             tint = TextTertiary,
             modifier = Modifier.size(44.dp),
@@ -475,7 +467,7 @@ fun CollectionDetailScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.Rounded.ArrowBack, contentDescription = "Back", tint = TextSecondary)
+                Icon(CadenceIcons.ArrowBack, contentDescription = "Back", tint = TextSecondary)
             }
             Spacer(Modifier.width(4.dp))
             Text(
@@ -534,7 +526,7 @@ fun CollectionDetailScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = Bg0),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     ) {
-                        Icon(Icons.Rounded.PlayArrow, null, Modifier.size(18.dp))
+                        Icon(CadenceIcons.PlayArrow, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
                         Text("Play", style = MaterialTheme.typography.labelLarge)
                     }
@@ -549,7 +541,7 @@ fun CollectionDetailScreen(
                         ),
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                     ) {
-                        Icon(Icons.Rounded.Shuffle, null, Modifier.size(17.dp), tint = TextSecondary)
+                        Icon(CadenceIcons.Shuffle, null, Modifier.size(17.dp), tint = TextSecondary)
                         Spacer(Modifier.width(4.dp))
                         Text("Shuffle", style = MaterialTheme.typography.labelLarge, color = TextSecondary)
                     }
@@ -594,6 +586,6 @@ private fun CollectionPlayButton(onClick: () -> Unit) {
             contentColor = Bg0,
         ),
     ) {
-        Icon(Icons.Rounded.PlayArrow, contentDescription = "Play")
+        Icon(CadenceIcons.PlayArrow, contentDescription = "Play")
     }
 }

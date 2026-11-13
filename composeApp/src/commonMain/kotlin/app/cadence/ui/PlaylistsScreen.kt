@@ -20,14 +20,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -61,6 +53,7 @@ import app.cadence.ui.components.PlaylistMosaic
 import app.cadence.ui.components.PlaylistNameDialog
 import app.cadence.ui.components.TrackListHeader
 import app.cadence.ui.components.TrackRow
+import app.cadence.ui.icons.CadenceIcons
 import app.cadence.ui.theme.Accent
 import app.cadence.ui.theme.Bg0
 import app.cadence.ui.theme.Surface2
@@ -111,7 +104,7 @@ fun PlaylistsScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = Bg0),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
             ) {
-                Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(CadenceIcons.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text("New playlist", style = MaterialTheme.typography.labelLarge)
             }
@@ -183,19 +176,19 @@ fun PlaylistDetailScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.Rounded.ArrowBack, contentDescription = "Back", tint = TextSecondary)
+                Icon(CadenceIcons.ArrowBack, contentDescription = "Back", tint = TextSecondary)
             }
             Spacer(Modifier.width(4.dp))
             Text("PLAYLIST", style = MaterialTheme.typography.labelSmall, color = TextTertiary)
             Spacer(Modifier.weight(1f))
             Box {
                 IconButton(onClick = { menuOpen = true }) {
-                    Icon(Icons.Rounded.MoreVert, contentDescription = "Playlist options", tint = TextSecondary)
+                    Icon(CadenceIcons.MoreVert, contentDescription = "Playlist options", tint = TextSecondary)
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(
                         text = { Text("Rename", style = MaterialTheme.typography.bodyMedium) },
-                        leadingIcon = { Icon(Icons.Rounded.Edit, null, Modifier.size(18.dp)) },
+                        leadingIcon = { Icon(CadenceIcons.Edit, null, Modifier.size(18.dp)) },
                         onClick = {
                             menuOpen = false
                             renameOpen = true
@@ -203,7 +196,7 @@ fun PlaylistDetailScreen(
                     )
                     DropdownMenuItem(
                         text = { Text("Delete playlist", style = MaterialTheme.typography.bodyMedium) },
-                        leadingIcon = { Icon(Icons.Rounded.DeleteOutline, null, Modifier.size(18.dp)) },
+                        leadingIcon = { Icon(CadenceIcons.DeleteOutline, null, Modifier.size(18.dp)) },
                         onClick = {
                             menuOpen = false
                             deleteOpen = true
@@ -254,7 +247,7 @@ fun PlaylistDetailScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = Bg0),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     ) {
-                        Icon(Icons.Rounded.PlayArrow, null, Modifier.size(18.dp))
+                        Icon(CadenceIcons.PlayArrow, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
                         Text("Play", style = MaterialTheme.typography.labelLarge)
                     }
@@ -264,7 +257,7 @@ fun PlaylistDetailScreen(
                         border = BorderStroke(1.dp, Color(0x33FFFFFF)),
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                     ) {
-                        Icon(Icons.Rounded.Shuffle, null, Modifier.size(17.dp), tint = TextSecondary)
+                        Icon(CadenceIcons.Shuffle, null, Modifier.size(17.dp), tint = TextSecondary)
                         Spacer(Modifier.width(4.dp))
                         Text("Shuffle", style = MaterialTheme.typography.labelLarge, color = TextSecondary)
                     }

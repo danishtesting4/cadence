@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import app.cadence.player.PlayerController
 import app.cadence.player.PlayerUiState
 import app.cadence.ui.components.Artwork
+import app.cadence.ui.icons.CadenceIcons
 import app.cadence.ui.theme.Accent
 import app.cadence.ui.theme.Bg0
 import app.cadence.ui.theme.TextPrimary
@@ -69,7 +68,7 @@ fun NowPlayingOverlay(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onClose, modifier = Modifier.size(40.dp)) {
                     Icon(
-                        Icons.Rounded.KeyboardArrowDown,
+                        CadenceIcons.KeyboardArrowDown,
                         contentDescription = "Close now playing",
                         tint = TextSecondary,
                     )
