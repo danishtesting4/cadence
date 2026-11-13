@@ -32,7 +32,7 @@ telemetry, and no network connection required.
 
 | Library | Playlists |
 | --- | --- |
-| ![Library](docs/screenshot.png) | coming soon |
+| ![Library](docs/screenshot.png) | ![Playlists](docs/playlists.png) |
 
 ## Getting started
 
