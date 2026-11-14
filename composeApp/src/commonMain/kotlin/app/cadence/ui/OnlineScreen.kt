@@ -51,6 +51,7 @@ import app.cadence.model.Playlist
 import app.cadence.model.Track
 import app.cadence.online.OnlinePlaylistInfo
 import app.cadence.online.YouTubeMusicService
+import app.cadence.platform.Platform
 import app.cadence.player.PlayerController
 import app.cadence.ui.components.Artwork
 import app.cadence.ui.components.SearchField
@@ -391,8 +392,10 @@ private fun AccountPanel(
     onSignIn: (String) -> Unit,
     onSignOut: () -> Unit,
 ) {
+    val scope = rememberCoroutineScope()
     var expanded by remember { mutableStateOf(false) }
     var cookie by remember(auth.cookie) { mutableStateOf(auth.cookie) }
+    var signingIn by remember { mutableStateOf(false) }
 
     Column(
         Modifier
@@ -421,12 +424,40 @@ private fun AccountPanel(
         }
         if (!auth.isSignedIn && expanded) {
             Spacer(Modifier.height(8.dp))
-            Text(
-                "Paste your music.youtube.com cookies to sign in (from browser devtools → Application/Storage → Cookies).",
-                style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary,
-            )
-            Spacer(Modifier.height(8.dp))
+            if (!Platform.isDesktop) {
+                Button(
+                    onClick = {
+                        if (signingIn) return@Button
+                        signingIn = true
+                        scope.launch {
+                            try {
+                                val result = Platform.signInYouTube()
+                                if (!result.isNullOrBlank()) onSignIn(result)
+                            } finally {
+                                signingIn = false
+                            }
+                        }
+                    },
+                    enabled = !signingIn,
+                    colors = ButtonDefaults.buttonColors(containerColor = Accent),
+                ) {
+                    if (signingIn) {
+                        CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp, color = androidx.compose.ui.graphics.Color.Black)
+                        Spacer(Modifier.width(6.dp))
+                    }
+                    Text("Sign in with Google", color = androidx.compose.ui.graphics.Color.Black)
+                }
+                Spacer(Modifier.height(8.dp))
+                Text("Or paste cookies manually:", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                Spacer(Modifier.height(6.dp))
+            } else {
+                Text(
+                    "Paste your music.youtube.com cookies to sign in (from browser devtools → Application/Storage → Cookies).",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                )
+                Spacer(Modifier.height(8.dp))
+            }
             OutlinedTextField(
                 value = cookie,
                 onValueChange = { cookie = it },

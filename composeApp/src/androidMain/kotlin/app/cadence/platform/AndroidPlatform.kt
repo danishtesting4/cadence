@@ -169,6 +169,27 @@ actual object Platform {
 
     actual fun fileExists(path: String): Boolean = runCatching { File(path).isFile }.getOrDefault(false)
 
+    var signInLauncher: (() -> Unit)? = null
+    private var pendingSignIn: kotlinx.coroutines.CompletableDeferred<String?>? = null
+
+    actual suspend fun signInYouTube(): String? {
+        val launcher = signInLauncher ?: return null
+        val deferred = kotlinx.coroutines.CompletableDeferred<String?>()
+        pendingSignIn = deferred
+        return try {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { launcher() }
+            deferred.await()
+        } catch (t: Throwable) {
+            pendingSignIn = null
+            null
+        }
+    }
+
+    fun deliverSignIn(cookie: String?) {
+        pendingSignIn?.complete(cookie?.takeIf { it.isNotBlank() })
+        pendingSignIn = null
+    }
+
     actual fun nowMs(): Long = System.currentTimeMillis()
 }
 

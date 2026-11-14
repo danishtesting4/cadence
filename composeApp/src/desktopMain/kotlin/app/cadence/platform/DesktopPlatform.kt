@@ -162,6 +162,8 @@ actual object Platform {
 
     actual fun fileExists(path: String): Boolean = runCatching { File(path).isFile }.getOrDefault(false)
 
+    actual suspend fun signInYouTube(): String? = null
+
     actual fun nowMs(): Long = System.currentTimeMillis()
 }
 

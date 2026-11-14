@@ -33,6 +33,9 @@ expect object Platform {
     fun fileSize(path: String): Long
     fun fileExists(path: String): Boolean
 
+    /** Launch an interactive YouTube Music sign-in flow and return captured cookies, or null. */
+    suspend fun signInYouTube(): String?
+
     fun nowMs(): Long
 }
 
