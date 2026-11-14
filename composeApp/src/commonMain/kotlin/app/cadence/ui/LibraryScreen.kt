@@ -144,6 +144,7 @@ fun LibraryScreen(
                             onAddToPlaylist = { library.addToPlaylist(it, track.id) },
                             onCreatePlaylistWith = { library.createPlaylist(it, track.id) },
                             onForget = { library.forgetTrack(track) },
+                            onRemoveDownload = { library.removeDownload(track.id) },
                         )
                     }
                 }
@@ -571,6 +572,7 @@ fun CollectionDetailScreen(
                     onAddToQueue = { player.addToQueue(track) },
                     onAddToPlaylist = { library.addToPlaylist(it, track.id) },
                     onCreatePlaylistWith = { library.createPlaylist(it, track.id) },
+                    onRemoveDownload = { library.removeDownload(track.id) },
                 )
             }
         }

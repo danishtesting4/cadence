@@ -307,6 +307,7 @@ fun PlaylistDetailScreen(
                         onAddToPlaylist = { library.addToPlaylist(it, track.id) },
                         onCreatePlaylistWith = { library.createPlaylist(it, track.id) },
                         onRemoveFromPlaylist = { library.removeFromPlaylist(playlist.id, track.id) },
+                        onRemoveDownload = { library.removeDownload(track.id) },
                     )
                 }
             }

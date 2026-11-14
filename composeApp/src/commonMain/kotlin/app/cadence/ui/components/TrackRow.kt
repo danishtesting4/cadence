@@ -61,6 +61,7 @@ fun TrackRow(
     onCreatePlaylistWith: (String) -> Unit,
     onRemoveFromPlaylist: (() -> Unit)? = null,
     onForget: (() -> Unit)? = null,
+    onRemoveDownload: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -119,6 +120,15 @@ fun TrackRow(
             )
         }
 
+        if (track.isDownloaded) {
+            Icon(
+                CadenceIcons.Download,
+                contentDescription = "Downloaded",
+                tint = Accent.copy(alpha = 0.8f),
+                modifier = Modifier.size(14.dp).padding(end = 2.dp),
+            )
+        }
+
         Text(
             text = track.durationMs.asPlaybackTime(),
             style = MaterialTheme.typography.bodyMedium,
@@ -136,6 +146,7 @@ fun TrackRow(
             onCreatePlaylistWith = onCreatePlaylistWith,
             onRemoveFromPlaylist = onRemoveFromPlaylist,
             onForget = onForget,
+            onRemoveDownload = onRemoveDownload,
         )
     }
 }
@@ -150,6 +161,7 @@ private fun TrackMenu(
     onCreatePlaylistWith: (String) -> Unit,
     onRemoveFromPlaylist: (() -> Unit)?,
     onForget: (() -> Unit)?,
+    onRemoveDownload: (() -> Unit)?,
 ) {
     var open by remember { mutableStateOf(false) }
     var newPlaylistOpen by remember { mutableStateOf(false) }
@@ -226,6 +238,18 @@ private fun TrackMenu(
                     onClick = {
                         open = false
                         onRemoveFromPlaylist()
+                    },
+                )
+            }
+
+            if (onRemoveDownload != null && track.isDownloaded) {
+                HorizontalDivider(color = Color(0x14FFFFFF))
+                DropdownMenuItem(
+                    text = { Text("Remove download", style = MaterialTheme.typography.bodyMedium) },
+                    leadingIcon = { Icon(CadenceIcons.DeleteOutline, null, Modifier.size(18.dp)) },
+                    onClick = {
+                        open = false
+                        onRemoveDownload()
                     },
                 )
             }
