@@ -2,6 +2,7 @@ package app.cadence.data
 
 import app.cadence.model.Playlist
 import app.cadence.model.Track
+import app.cadence.model.TrackSource
 import app.cadence.platform.Platform
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -70,9 +71,7 @@ class LibraryRepository(private val scope: CoroutineScope) {
                     return@launch
                 }
                 val before = _tracks.value.associateBy { it.uri }
-                val merged = (before.values + found)
-                    .distinctBy { it.uri }
-                    .sortedWith(compareBy({ it.title.lowercase() }, { it.artist.lowercase() }))
+                val merged = mergeLocal(before.values.toList(), found)
                 _tracks.value = merged
                 persist(KEY_LIBRARY, json.encodeToString(trackListSerializer, merged))
                 val added = merged.size - before.size
@@ -86,6 +85,71 @@ class LibraryRepository(private val scope: CoroutineScope) {
                 _scanning.value = false
             }
         }
+    }
+
+    private fun mergeLocal(existing: List<Track>, found: List<Track>): List<Track> {
+        val localByUri = existing.filter { it.isLocal }.associateBy { it.uri }.toMutableMap()
+        found.forEach { localByUri[it.uri] = it }
+        val nonLocal = existing.filter { !it.isLocal }
+        return (localByUri.values + nonLocal)
+            .distinctBy { dedupeKey(it) }
+            .sortedWith(compareBy({ it.title.lowercase() }, { it.artist.lowercase() }))
+    }
+
+    private fun dedupeKey(t: Track): String = when {
+        t.isLocal -> "local:${t.uri}"
+        !t.videoId.isNullOrBlank() -> "yt:${t.videoId}"
+        else -> "uri:${t.uri}"
+    }
+
+    /** Upsert online tracks into the library, returning the resolved track ids in order. */
+    fun upsertOnlineTracks(tracks: List<Track>): List<String> {
+        if (tracks.isEmpty()) return emptyList()
+        val byKey = _tracks.value.associateBy { dedupeKey(it) }.toMutableMap()
+        val ids = tracks.map { incoming ->
+            val key = dedupeKey(incoming)
+            val existing = byKey[key]
+            val resolved = if (existing != null) {
+                existing.copy(
+                    title = incoming.title.ifBlank { existing.title },
+                    artist = incoming.artist.ifBlank { existing.artist },
+                    album = incoming.album.ifBlank { existing.album },
+                    durationMs = if (incoming.durationMs > 0) incoming.durationMs else existing.durationMs,
+                    artworkUrl = incoming.artworkUrl ?: existing.artworkUrl,
+                    localUri = existing.localUri ?: incoming.localUri,
+                    source = if (existing.isDownloaded) TrackSource.DOWNLOADED else incoming.source,
+                )
+            } else incoming
+            byKey[key] = resolved
+            resolved.id
+        }
+        _tracks.value = byKey.values
+            .distinctBy { dedupeKey(it) }
+            .sortedWith(compareBy({ it.title.lowercase() }, { it.artist.lowercase() }))
+        persist(KEY_LIBRARY, json.encodeToString(trackListSerializer, _tracks.value))
+        return ids
+    }
+
+    /** Create or update a synced online playlist by its remote browse id. */
+    fun upsertSyncedPlaylist(name: String, remoteBrowseId: String, trackIds: List<String>, thumbnailUrl: String? = null): String {
+        val existing = _playlists.value.firstOrNull { it.remoteBrowseId == remoteBrowseId }
+        val id = existing?.id ?: ("ytpl_" + Platform.nowMs().toString(36) + "_" + (0..9999).random())
+        val updated = Playlist(
+            id = id,
+            name = name.trim().ifBlank { existing?.name ?: "Playlist" },
+            trackIds = trackIds,
+            createdAt = existing?.createdAt ?: Platform.nowMs(),
+            source = TrackSource.ONLINE,
+            remoteBrowseId = remoteBrowseId,
+            thumbnailUrl = thumbnailUrl ?: existing?.thumbnailUrl,
+        )
+        _playlists.value = if (existing != null) {
+            _playlists.value.map { if (it.id == existing.id) updated else it }
+        } else {
+            _playlists.value + updated
+        }
+        persist(KEY_PLAYLISTS, json.encodeToString(playlistListSerializer, _playlists.value))
+        return id
     }
 
     fun forgetTrack(track: Track) {
@@ -134,6 +198,8 @@ class LibraryRepository(private val scope: CoroutineScope) {
         val byId = _tracks.value.associateBy { it.id }
         return playlist.trackIds.mapNotNull { byId[it] }
     }
+
+    fun notify(message: String) { _message.value = message }
 
     fun consumeMessage() {
         _message.value = null

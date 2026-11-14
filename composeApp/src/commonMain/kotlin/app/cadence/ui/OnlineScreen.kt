@@ -17,11 +17,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -41,6 +47,7 @@ import app.cadence.data.SponsorBlockPreferences
 import app.cadence.data.YouTubeAuthState
 import app.cadence.model.Playlist
 import app.cadence.model.Track
+import app.cadence.online.OnlinePlaylistInfo
 import app.cadence.online.YouTubeMusicService
 import app.cadence.player.PlayerController
 import app.cadence.ui.components.Artwork
@@ -52,12 +59,6 @@ import app.cadence.ui.theme.TextPrimary
 import app.cadence.ui.theme.TextSecondary
 import app.cadence.ui.theme.TextTertiary
 import app.cadence.util.asPlaybackTime
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.TextButton
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -82,6 +83,11 @@ fun OnlineScreen(
     var searchJob by remember { mutableStateOf<Job?>(null) }
     var showSb by remember { mutableStateOf(false) }
 
+    // Sync state
+    var syncing by remember { mutableStateOf<String?>(null) }
+    var remotePlaylists by remember { mutableStateOf<List<OnlinePlaylistInfo>>(emptyList()) }
+    var remotePlaylistsLoaded by remember { mutableStateOf(false) }
+
     fun runSearch(q: String) {
         val trimmed = q.trim()
         searchJob?.cancel()
@@ -98,6 +104,48 @@ fun OnlineScreen(
             searched = true
             found.onSuccess { results = it }
                 .onFailure { error = it.message ?: "Search failed"; results = emptyList() }
+        }
+    }
+
+    suspend fun syncLiked() {
+        syncing = "liked"
+        val songs = runCatching { online.getLikedSongs() }.getOrElse { emptyList() }
+        if (songs.isNotEmpty()) {
+            val ids = library.upsertOnlineTracks(songs)
+            library.upsertSyncedPlaylist("Liked songs", "FEmusic_liked_videos", ids)
+            library.notify("Synced ${songs.size} liked song${if (songs.size == 1) "" else "s"}")
+        } else {
+            library.notify("No liked songs found (check sign-in/cookies)")
+        }
+        syncing = null
+    }
+
+    suspend fun loadRemotePlaylists() {
+        syncing = "playlists"
+        val pls = runCatching { online.getSavedPlaylists() }.getOrElse { emptyList() }
+        remotePlaylists = pls
+        remotePlaylistsLoaded = true
+        if (pls.isEmpty()) library.notify("No saved playlists found")
+        syncing = null
+    }
+
+    suspend fun importPlaylist(info: OnlinePlaylistInfo) {
+        syncing = info.browseId
+        val songs = runCatching { online.getPlaylistTracks(info.browseId) }.getOrElse { emptyList() }
+        if (songs.isNotEmpty()) {
+            val ids = library.upsertOnlineTracks(songs)
+            library.upsertSyncedPlaylist(info.name, info.browseId, ids, info.thumbnailUrl)
+            library.notify("Imported \"${info.name}\" (${songs.size} tracks)")
+        } else {
+            library.notify("Couldn't load tracks for \"${info.name}\"")
+        }
+        syncing = null
+    }
+
+    // reset remote playlists view when signed out
+    LaunchedEffect(settings.youtubeAuth.isSignedIn) {
+        if (!settings.youtubeAuth.isSignedIn) {
+            remotePlaylists = emptyList(); remotePlaylistsLoaded = false
         }
     }
 
@@ -119,9 +167,22 @@ fun OnlineScreen(
                 auth = settings.youtubeAuth,
                 compact = compact,
                 onSignIn = { cookie -> settingsRepo.setYouTubeAuth(settings.youtubeAuth.copy(cookie = cookie.trim())) },
-                onSignOut = { settingsRepo.setYouTubeAuth(app.cadence.data.YouTubeAuthState()) },
+                onSignOut = { settingsRepo.setYouTubeAuth(YouTubeAuthState()) },
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
+
+            if (settings.youtubeAuth.isSignedIn) {
+                SyncPanel(
+                    syncing = syncing,
+                    playlists = remotePlaylists,
+                    playlistsLoaded = remotePlaylistsLoaded,
+                    onSyncLiked = { scope.launch { syncLiked() } },
+                    onLoadPlaylists = { scope.launch { loadRemotePlaylists() } },
+                    onImportPlaylist = { info -> scope.launch { importPlaylist(info) } },
+                )
+                Spacer(Modifier.height(10.dp))
+            }
+
             SearchField(
                 value = query,
                 onValueChange = { query = it; runSearch(it) },
@@ -171,11 +232,79 @@ fun OnlineScreen(
             else -> item {
                 Spacer(Modifier.height(20.dp))
                 Text(
-                    "Type to find and stream songs. SponsorBlock can skip sponsors and non-music segments.",
+                    "Type to find and stream songs. Sign in to sync your liked songs and playlists.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = TextTertiary,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun SyncPanel(
+    syncing: String?,
+    playlists: List<OnlinePlaylistInfo>,
+    playlistsLoaded: Boolean,
+    onSyncLiked: () -> Unit,
+    onLoadPlaylists: () -> Unit,
+    onImportPlaylist: (OnlinePlaylistInfo) -> Unit,
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.03f))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text("Sync library", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Button(
+                onClick = onSyncLiked,
+                enabled = syncing == null,
+                colors = ButtonDefaults.buttonColors(containerColor = Accent),
+            ) {
+                if (syncing == "liked") {
+                    CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp, color = androidx.compose.ui.graphics.Color.Black)
+                    Spacer(Modifier.width(6.dp))
+                }
+                Text("Sync liked songs", color = androidx.compose.ui.graphics.Color.Black)
+            }
+            TextButton(onClick = onLoadPlaylists, enabled = syncing == null) {
+                if (syncing == "playlists") {
+                    CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp, color = Accent)
+                    Spacer(Modifier.width(6.dp))
+                }
+                Text(if (playlistsLoaded) "Refresh playlists" else "Load playlists", color = Accent)
+            }
+        }
+        if (playlistsLoaded) {
+            if (playlists.isEmpty()) {
+                Text("No saved playlists found.", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+            } else {
+                playlists.forEach { pl ->
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(pl.name, style = MaterialTheme.typography.bodyMedium, color = TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            val sub = pl.trackCount?.let { "$it tracks" } ?: "Playlist"
+                            Text(sub, style = MaterialTheme.typography.bodySmall, color = TextTertiary)
+                        }
+                        if (syncing == pl.browseId) {
+                            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = Accent)
+                        } else {
+                            TextButton(onClick = { onImportPlaylist(pl) }, enabled = syncing == null) {
+                                Text("Import", color = Accent)
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            Text("Load playlists to import them into your library.", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
         }
     }
 }
@@ -247,7 +376,6 @@ private fun SbToggle(label: String, checked: Boolean, onChecked: (Boolean) -> Un
         )
     }
 }
-
 
 @Composable
 private fun AccountPanel(
