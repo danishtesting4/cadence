@@ -32,6 +32,8 @@ No ads, no telemetry; the local player works fully offline.
   per-category toggles (fetched from `sponsor.ajay.app`, fails open).
 - **Offline saves** — download online tracks for offline playback, with progress,
   cancel, storage usage and one-tap clearing.
+- **Background playback** on Android — keeps playing with a media notification,
+  lockscreen and headset controls.
 - **Dark, responsive UI** — a sidebar layout on desktop and a bottom-nav layout
   on phones.
 
@@ -175,12 +177,10 @@ Cadence is at **v0.1.0**, an early but usable release.
 - [x] YouTube Music sign-in (Android WebView) and liked/playlist sync
 - [x] Offline downloads with progress, cancel and storage management
 - [x] SponsorBlock segment skipping with configurable categories
-- [ ] Android background playback with media notifications
+- [x] Android background playback with media notification service
 - [ ] MPRIS / media key integration on desktop
 - [ ] Drag-and-drop files onto the desktop window
 - [ ] Waveform/visualizer and crossfade
-- [x] Android background playback with media notification service
-- [ ] MPRIS / media key integration on desktop
 - [ ] Automated Windows/macOS smoke tests
 
 ### YouTube Music notes
