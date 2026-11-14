@@ -180,6 +180,7 @@ fun App() {
         onDispose {
             engine.release()
             online.close()
+            downloader.close()
             sponsorHttp.close()
         }
     }
@@ -404,6 +405,7 @@ private fun AppContent(
                 player = player,
                 playlists = playlists,
                 library = library,
+                tracks = tracks,
                 compact = compact,
                 settingsRepo = settingsRepo,
                 downloader = downloader,

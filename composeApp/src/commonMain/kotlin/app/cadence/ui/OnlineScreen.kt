@@ -22,6 +22,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -45,6 +46,7 @@ import app.cadence.data.LibraryRepository
 import app.cadence.data.SettingsRepository
 import app.cadence.data.SponsorBlockPreferences
 import app.cadence.data.YouTubeAuthState
+import app.cadence.download.DownloadProgress
 import app.cadence.download.DownloadState
 import app.cadence.download.TrackDownloader
 import app.cadence.model.Playlist
@@ -72,6 +74,7 @@ fun OnlineScreen(
     player: PlayerController,
     playlists: List<Playlist>,
     library: LibraryRepository,
+    tracks: List<Track>,
     compact: Boolean,
     settingsRepo: SettingsRepository,
     downloader: TrackDownloader,
@@ -80,6 +83,7 @@ fun OnlineScreen(
     val playerState by player.state.collectAsState()
     val settings by settingsRepo.settings.collectAsState()
     val downloadStates by downloader.states.collectAsState()
+    val downloadProgress by downloader.progress.collectAsState()
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<Track>>(emptyList()) }
     var searching by remember { mutableStateOf(false) }
@@ -92,6 +96,16 @@ fun OnlineScreen(
     var syncing by remember { mutableStateOf<String?>(null) }
     var remotePlaylists by remember { mutableStateOf<List<OnlinePlaylistInfo>>(emptyList()) }
     var remotePlaylistsLoaded by remember { mutableStateOf(false) }
+
+    // Offline storage management
+    val downloadedTracks = remember(tracks) { downloader.downloadedTracks(tracks) }
+    var storageBytes by remember { mutableStateOf(0L) }
+    var storageLoading by remember { mutableStateOf(false) }
+    LaunchedEffect(downloadedTracks.size) {
+        storageLoading = true
+        storageBytes = runCatching { downloader.storageBytes() }.getOrDefault(0L)
+        storageLoading = false
+    }
 
     fun runSearch(q: String) {
         val trimmed = q.trim()
@@ -202,6 +216,18 @@ fun OnlineScreen(
                 onUpdate = { settingsRepo.updateSponsorBlock(it) },
             )
             Spacer(Modifier.height(8.dp))
+            OfflinePanel(
+                tracks = downloadedTracks,
+                storageBytes = storageBytes,
+                loading = storageLoading,
+                onClearAll = {
+                    scope.launch {
+                        downloader.clearAll(tracks)
+                        storageBytes = 0L
+                    }
+                },
+            )
+            Spacer(Modifier.height(8.dp))
         }
 
         when {
@@ -222,7 +248,8 @@ fun OnlineScreen(
             }
             results.isNotEmpty() -> {
                 itemsIndexed(results, key = { _, t -> t.id }) { index, track ->
-                    val dlState = downloadStates[track.videoId ?: track.id] ?: downloader.stateFor(track)
+                    val dlKey = track.videoId ?: track.id
+                    val dlState = downloader.stateFor(track)
                     OnlineResultRow(
                         index = index,
                         track = track,
@@ -230,10 +257,12 @@ fun OnlineScreen(
                         isPlaying = playerState.isPlaying,
                         compact = compact,
                         downloadState = dlState,
+                        downloadProgress = if (dlState == DownloadState.DOWNLOADING) downloadProgress[dlKey] else null,
                         onPlay = { player.playQueue(results, index) },
                         onPlayNext = { player.playNext(track) },
                         onAddToQueue = { player.addToQueue(track) },
-                        onDownload = { scope.launch { downloader.download(track) } },
+                        onDownload = { downloader.download(track) },
+                        onCancelDownload = { downloader.cancel(track) },
                     )
                 }
             }
@@ -486,10 +515,12 @@ private fun OnlineResultRow(
     isPlaying: Boolean,
     compact: Boolean,
     downloadState: DownloadState,
+    downloadProgress: DownloadProgress?,
     onPlay: () -> Unit,
     onPlayNext: () -> Unit,
     onAddToQueue: () -> Unit,
     onDownload: () -> Unit,
+    onCancelDownload: () -> Unit,
 ) {
     val bg = if (isCurrent) Accent.copy(alpha = 0.09f) else androidx.compose.ui.graphics.Color.Transparent
     Row(
@@ -549,11 +580,120 @@ private fun OnlineResultRow(
             }
         }
         when (downloadState) {
-            DownloadState.DOWNLOADING -> CircularProgressIndicator(Modifier.size(16.dp).padding(horizontal = 4.dp), strokeWidth = 2.dp, color = Accent)
+            DownloadState.DOWNLOADING -> {
+                if (downloadProgress?.isIndeterminate == true) {
+                    CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = Accent)
+                } else {
+                    CircularProgressIndicator(
+                        progress = { downloadProgress?.fraction ?: 0f },
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = Accent,
+                    )
+                }
+                IconButton(onClick = onCancelDownload, modifier = Modifier.size(28.dp)) {
+                    Icon(CadenceIcons.Close, "Cancel download", tint = TextTertiary, modifier = Modifier.size(16.dp))
+                }
+            }
             DownloadState.DONE -> Icon(CadenceIcons.Check, "Downloaded", tint = Accent, modifier = Modifier.size(18.dp).padding(horizontal = 4.dp))
             DownloadState.FAILED, DownloadState.IDLE -> IconButton(onClick = onDownload, modifier = Modifier.size(30.dp)) {
                 Icon(CadenceIcons.Download, "Save offline", tint = TextTertiary, modifier = Modifier.size(18.dp))
             }
         }
     }
+}
+
+@Composable
+private fun OfflinePanel(
+    tracks: List<Track>,
+    storageBytes: Long,
+    loading: Boolean,
+    onClearAll: () -> Unit,
+) {
+    var confirm by remember { mutableStateOf(false) }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.03f))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Offline", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                Text(
+                    when {
+                        tracks.isEmpty() -> "No saved tracks"
+                        loading -> "Calculating storage…"
+                        else -> "${tracks.size} track${if (tracks.size == 1) "" else "s"} · ${formatBytes(storageBytes)}"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                )
+            }
+            if (tracks.isNotEmpty()) {
+                TextButton(onClick = { confirm = true }, enabled = !loading) {
+                    Text("Clear all", color = TextSecondary)
+                }
+            }
+        }
+        if (tracks.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            DownloadedTracksList(tracks)
+        }
+    }
+
+    if (confirm) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirm = false },
+            containerColor = androidx.compose.ui.graphics.Color(0xFF1B1B1F),
+            title = { Text("Clear offline downloads?", style = MaterialTheme.typography.headlineSmall, color = TextPrimary) },
+            text = {
+                Text(
+                    "Removes ${tracks.size} saved track${if (tracks.size == 1) "" else "s"} and frees storage. Your library entries are kept.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirm = false
+                    onClearAll()
+                }) { Text("Clear all", color = Accent) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirm = false }) { Text("Cancel", color = TextSecondary) }
+            },
+        )
+    }
+}
+
+@Composable
+private fun DownloadedTracksList(tracks: List<Track>) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        tracks.take(5).forEach { t ->
+            Row(Modifier.fillMaxWidth().padding(vertical = 1.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(CadenceIcons.Download, null, tint = Accent.copy(alpha = 0.7f), modifier = Modifier.size(12.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    t.title,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        if (tracks.size > 5) {
+            Text("+${tracks.size - 5} more", style = MaterialTheme.typography.labelSmall, color = TextTertiary)
+        }
+    }
+}
+
+private fun formatBytes(bytes: Long): String = when {
+    bytes >= 1024L * 1024 * 1024 -> String.format("%.1f GB", bytes / (1024.0 * 1024 * 1024))
+    bytes >= 1024L * 1024 -> String.format("%.1f MB", bytes / (1024.0 * 1024))
+    bytes >= 1024L -> String.format("%.0f KB", bytes / 1024.0)
+    else -> "$bytes B"
 }

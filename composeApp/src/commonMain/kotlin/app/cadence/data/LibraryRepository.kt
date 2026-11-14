@@ -162,14 +162,24 @@ class LibraryRepository(private val scope: CoroutineScope) {
     }
 
     fun removeDownload(trackId: String) {
-        val t = _tracks.value.firstOrNull { it.id == trackId } ?: return
+        removeDownloadAndReturnPath(trackId)
+    }
+
+    /** Removes the cached copy for [trackId] and returns its previous local path, if any. */
+    fun removeDownloadAndReturnPath(trackId: String): String? {
+        val t = _tracks.value.firstOrNull { it.id == trackId || it.videoId == trackId } ?: return null
         val local = t.localUri
         _tracks.value = _tracks.value.map {
-            if (it.id == trackId) it.copy(localUri = null, source = if (it.videoId != null) TrackSource.ONLINE else TrackSource.LOCAL)
-            else it
+            if (it.id == t.id) {
+                it.copy(
+                    localUri = null,
+                    source = if (it.videoId != null) TrackSource.ONLINE else TrackSource.LOCAL,
+                )
+            } else it
         }
         if (!local.isNullOrBlank()) Platform.deleteFile(local)
         persist(KEY_LIBRARY, json.encodeToString(trackListSerializer, _tracks.value))
+        return local
     }
 
 
