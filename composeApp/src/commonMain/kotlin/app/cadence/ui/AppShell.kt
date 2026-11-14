@@ -62,6 +62,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cadence.data.LibraryRepository
+import app.cadence.data.SettingsRepository
 import app.cadence.model.Playlist
 import app.cadence.model.Track
 import app.cadence.online.SponsorBlockClient
@@ -141,6 +142,7 @@ fun App() {
     val scope = rememberCoroutineScope()
     val engine = remember { createAudioEngine() }
     val library = remember { LibraryRepository(scope) }
+    val settingsRepo = remember { SettingsRepository(scope) }
     val online = remember { YouTubeMusicService() }
     val sponsorHttp = remember { HttpClient(OkHttp) }
     val sponsorBlock = remember { SponsorBlockClient(sponsorHttp) }
@@ -157,7 +159,9 @@ fun App() {
                 )
             },
             fetchSkipSegments = { videoId ->
-                sponsorBlock.getSkipSegments(videoId).map { PlaybackSkipSegment(it.startMs, it.endMs) }
+                val cats = settingsRepo.settings.value.sponsorBlock.enabledCategories()
+                if (cats.isEmpty()) emptyList()
+                else sponsorBlock.getSkipSegments(videoId, cats).map { PlaybackSkipSegment(it.startMs, it.endMs) }
             },
         )
     }
@@ -218,6 +222,7 @@ fun App() {
                         playlists = playlists,
                         scanning = scanning,
                         online = online,
+                        settingsRepo = settingsRepo,
                     )
                 } else {
                     DesktopShell(
@@ -228,6 +233,7 @@ fun App() {
                         playlists = playlists,
                         scanning = scanning,
                         online = online,
+                        settingsRepo = settingsRepo,
                     )
                 }
 
@@ -254,6 +260,7 @@ private fun DesktopShell(
     playlists: List<Playlist>,
     scanning: Boolean,
     online: YouTubeMusicService,
+    settingsRepo: SettingsRepository,
 ) {
     Row(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
         Sidebar(
@@ -274,6 +281,7 @@ private fun DesktopShell(
                     scanning = scanning,
                     compact = false,
                     online = online,
+                    settingsRepo = settingsRepo,
                 )
             }
             DesktopPlayerBar(
@@ -303,6 +311,7 @@ private fun MobileShell(
     playlists: List<Playlist>,
     scanning: Boolean,
     online: YouTubeMusicService,
+    settingsRepo: SettingsRepository,
 ) {
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
         Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -315,6 +324,7 @@ private fun MobileShell(
                 scanning = scanning,
                 compact = true,
                 online = online,
+                settingsRepo = settingsRepo,
             )
         }
         MiniPlayer(player = player, onExpand = { app.nowPlaying = true })
@@ -332,6 +342,7 @@ private fun AppContent(
     scanning: Boolean,
     compact: Boolean,
     online: YouTubeMusicService,
+    settingsRepo: SettingsRepository,
 ) {
     val playlist = app.openPlaylistId?.let { id -> playlists.firstOrNull { it.id == id } }
 
@@ -378,6 +389,7 @@ private fun AppContent(
                 playlists = playlists,
                 library = library,
                 compact = compact,
+                settingsRepo = settingsRepo,
             )
         }
 
