@@ -72,8 +72,8 @@ android {
         applicationId = "app.cadence"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.1.1"
     }
 
     sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
@@ -113,7 +113,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Exe, TargetFormat.Deb)
             packageName = "Cadence"
-            packageVersion = "1.0.0"
+            packageVersion = "0.1.1"
             description = "A free, open-source music player"
             vendor = "Cadence"
 
