@@ -1,5 +1,6 @@
 package app.cadence.online
 
+import app.cadence.data.YouTubeAuthState
 import app.cadence.model.Track
 import app.cadence.model.TrackSource
 import app.cadence.platform.Platform
@@ -26,10 +27,17 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+
+data class OnlinePlaylistInfo(
+    val id: String,
+    val name: String,
+    val browseId: String,
+    val thumbnailUrl: String? = null,
+    val trackCount: Int? = null,
+)
 
 /**
  * YouTube Music online source backed by innertubex.
@@ -111,6 +119,50 @@ class YouTubeMusicService {
                 resolved
             }.getOrNull()
         }
+    }
+
+    fun applyAuth(cookie: String?, visitorData: String? = null, dataSyncId: String? = null) {
+        innerTube.cookie = cookie?.takeIf { it.isNotBlank() }
+        innerTube.visitorData = visitorData?.takeIf { it.isNotBlank() }
+        innerTube.dataSyncId = dataSyncId?.takeIf { it.isNotBlank() }
+        innerTube.useLoginForBrowse = !cookie.isNullOrBlank()
+    }
+
+    fun clearAuth() {
+        innerTube.cookie = null
+        innerTube.visitorData = null
+        innerTube.dataSyncId = null
+        innerTube.useLoginForBrowse = false
+    }
+
+    /** Fetch liked songs for the signed-in account. */
+    suspend fun getLikedSongs(): List<Track> = withContext(Dispatchers.Default) {
+        runCatching {
+            val body = innerTube.browse(
+                YouTubeClient.WEB_REMIX, "FEmusic_liked_videos", null, null, true,
+            ).bodyAsText()
+            parseSongResults(body)
+        }.getOrDefault(emptyList())
+    }
+
+    /** Fetch saved/library playlists for the signed-in account. */
+    suspend fun getSavedPlaylists(): List<OnlinePlaylistInfo> = withContext(Dispatchers.Default) {
+        runCatching {
+            val body = innerTube.browse(
+                YouTubeClient.WEB_REMIX, "FEmusic_liked_playlists", null, null, true,
+            ).bodyAsText()
+            parsePlaylistResults(body)
+        }.getOrDefault(emptyList())
+    }
+
+    /** Fetch tracks inside an online playlist/album by its browseId. */
+    suspend fun getPlaylistTracks(browseId: String): List<Track> = withContext(Dispatchers.Default) {
+        runCatching {
+            val body = innerTube.browse(
+                YouTubeClient.WEB_REMIX, browseId, null, null, true,
+            ).bodyAsText()
+            parseSongResults(body)
+        }.getOrDefault(emptyList())
     }
 
     fun close() {
@@ -213,6 +265,71 @@ class YouTubeMusicService {
 
     private fun normalizeThumbUrl(url: String): String =
         url.replace(Regex("=w\\d+-h\\d+(-[a-z0-9-]+)*"), "=w544-h544")
+
+    private fun parsePlaylistResults(raw: String): List<OnlinePlaylistInfo> {
+        val root = runCatching { json.parseToJsonElement(raw).jsonObject }.getOrNull() ?: return emptyList()
+        val results = mutableListOf<OnlinePlaylistInfo>()
+        val seen = linkedSetOf<String>()
+
+        fun walk(el: JsonElement) {
+            when (el) {
+                is JsonObject -> {
+                    // musicTwoRowItemRenderer (common for playlists in library grid)
+                    el["musicTwoRowItemRenderer"]?.jsonObject?.let { r ->
+                        playlistFromTwoRow(r)?.let { if (seen.add(it.browseId)) results += it }
+                    }
+                    // gridPlaylistRenderer
+                    el["gridPlaylistRenderer"]?.jsonObject?.let { r ->
+                        playlistFromGrid(r)?.let { if (seen.add(it.browseId)) results += it }
+                    }
+                    // musicResponsiveListItemRenderer can also represent playlists
+                    el["musicResponsiveListItemRenderer"]?.jsonObject?.let { r ->
+                        playlistFromResponsive(r)?.let { if (seen.add(it.browseId)) results += it }
+                    }
+                    el.values.forEach(::walk)
+                }
+                is JsonArray -> el.forEach(::walk)
+                else -> Unit
+            }
+        }
+        walk(root)
+        return results
+    }
+
+    private fun playlistFromTwoRow(r: JsonObject): OnlinePlaylistInfo? {
+        val title = r.obj("title")?.arr("runs")?.joinText()?.takeIf { it.isNotBlank() } ?: return null
+        val browseId = r.obj("navigationEndpoint")?.obj("browseEndpoint")?.str("browseId")
+            ?: r.obj("title")?.arr("runs")?.firstNotNullOfOrNull { it.obj("navigationEndpoint")?.obj("browseEndpoint")?.str("browseId") }
+            ?: return null
+        val thumbs = r.obj("thumbnailRenderer")?.obj("musicThumbnailRenderer")
+            ?.obj("thumbnail")?.arr("thumbnails")
+            ?: r.obj("thumbnail")?.obj("musicThumbnailRenderer")?.obj("thumbnail")?.arr("thumbnails")
+        val thumb = thumbs?.mapNotNull { it.obj()?.str("url") }?.lastOrNull()?.let(::normalizeThumbUrl)
+        val subtitle = r.obj("subtitle")?.arr("runs")?.joinText().orEmpty()
+        val count = subtitle.filter { it.isDigit() }.takeIf { it.isNotEmpty() }?.toIntOrNull()
+        return OnlinePlaylistInfo(id = browseId, name = title, browseId = browseId, thumbnailUrl = thumb, trackCount = count)
+    }
+
+    private fun playlistFromGrid(r: JsonObject): OnlinePlaylistInfo? {
+        val title = r.obj("title")?.arr("runs")?.joinText()?.takeIf { it.isNotBlank() } ?: return null
+        val browseId = r.obj("navigationEndpoint")?.obj("browseEndpoint")?.str("browseId") ?: return null
+        val thumbs = r.obj("thumbnail")?.obj("musicThumbnailRenderer")?.obj("thumbnail")?.arr("thumbnails")
+        val thumb = thumbs?.mapNotNull { it.obj()?.str("url") }?.lastOrNull()?.let(::normalizeThumbUrl)
+        return OnlinePlaylistInfo(id = browseId, name = title, browseId = browseId, thumbnailUrl = thumb)
+    }
+
+    private fun playlistFromResponsive(r: JsonObject): OnlinePlaylistInfo? {
+        val flex = r.arr("flexColumns").mapNotNull { it.obj("musicResponsiveListItemFlexColumnRenderer")?.obj("text") }
+        val title = flex.getOrNull(0)?.arr("runs")?.joinText()?.takeIf { it.isNotBlank() } ?: return null
+        val nav = r.obj("navigationEndpoint")?.obj("browseEndpoint")
+            ?: flex.getOrNull(0)?.arr("runs")?.firstNotNullOfOrNull { it.obj("navigationEndpoint")?.obj("browseEndpoint") }
+        val browseId = nav?.str("browseId") ?: return null
+        // Only treat as playlist/album if it's not a song (songs have watchEndpoint videoId)
+        if (r.obj("navigationEndpoint")?.obj("watchEndpoint")?.str("videoId") != null) return null
+        val thumbs = r.obj("thumbnail")?.obj("musicThumbnailRenderer")?.obj("thumbnail")?.arr("thumbnails")
+        val thumb = thumbs?.mapNotNull { it.obj()?.str("url") }?.lastOrNull()?.let(::normalizeThumbUrl)
+        return OnlinePlaylistInfo(id = browseId, name = title, browseId = browseId, thumbnailUrl = thumb)
+    }
 
     companion object {
         /** YouTube Music "Songs" filter param. */

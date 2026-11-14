@@ -33,6 +33,18 @@ class SettingsRepository(private val scope: CoroutineScope) {
         persist(next)
     }
 
+    fun updateYouTubeAuth(transform: (YouTubeAuthState) -> YouTubeAuthState) {
+        val next = _settings.value.copy(youtubeAuth = transform(_settings.value.youtubeAuth))
+        _settings.value = next
+        persist(next)
+    }
+
+    fun setYouTubeAuth(auth: YouTubeAuthState) {
+        val next = _settings.value.copy(youtubeAuth = auth)
+        _settings.value = next
+        persist(next)
+    }
+
     private fun persist(value: AppSettings) {
         scope.launch(Dispatchers.IO) {
             runCatching { Platform.writeState(KEY, json.encodeToString(AppSettings.serializer(), value)) }

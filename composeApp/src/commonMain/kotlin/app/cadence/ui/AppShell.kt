@@ -167,6 +167,13 @@ fun App() {
     }
     val app = remember { AppState() }
 
+    val settings by settingsRepo.settings.collectAsState()
+    LaunchedEffect(settings.youtubeAuth.cookie, settings.youtubeAuth.visitorData, settings.youtubeAuth.dataSyncId) {
+        val auth = settings.youtubeAuth
+        if (auth.isSignedIn) online.applyAuth(auth.cookie, auth.visitorData.ifBlank { null }, auth.dataSyncId.ifBlank { null })
+        else online.clearAuth()
+    }
+
     DisposableEffect(Unit) {
         onDispose {
             engine.release()

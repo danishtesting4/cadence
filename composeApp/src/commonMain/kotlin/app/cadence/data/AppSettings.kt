@@ -28,6 +28,18 @@ data class SponsorBlockPreferences(
 }
 
 @Serializable
+data class YouTubeAuthState(
+    val cookie: String = "",
+    val visitorData: String = "",
+    val dataSyncId: String = "",
+    val accountName: String = "",
+    val accountEmail: String = "",
+) {
+    val isSignedIn: Boolean get() = cookie.isNotBlank()
+}
+
+@Serializable
 data class AppSettings(
     val sponsorBlock: SponsorBlockPreferences = SponsorBlockPreferences(),
+    val youtubeAuth: YouTubeAuthState = YouTubeAuthState(),
 )

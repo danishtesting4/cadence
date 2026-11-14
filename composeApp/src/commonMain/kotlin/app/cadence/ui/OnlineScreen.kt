@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import app.cadence.data.LibraryRepository
 import app.cadence.data.SettingsRepository
 import app.cadence.data.SponsorBlockPreferences
+import app.cadence.data.YouTubeAuthState
 import app.cadence.model.Playlist
 import app.cadence.model.Track
 import app.cadence.online.YouTubeMusicService
@@ -51,9 +52,12 @@ import app.cadence.ui.theme.TextPrimary
 import app.cadence.ui.theme.TextSecondary
 import app.cadence.ui.theme.TextTertiary
 import app.cadence.util.asPlaybackTime
-import androidx.compose.foundation.layout.RowScope
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.TextButton
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -111,6 +115,13 @@ fun OnlineScreen(
                 color = TextSecondary,
             )
             Spacer(Modifier.height(14.dp))
+            AccountPanel(
+                auth = settings.youtubeAuth,
+                compact = compact,
+                onSignIn = { cookie -> settingsRepo.setYouTubeAuth(settings.youtubeAuth.copy(cookie = cookie.trim())) },
+                onSignOut = { settingsRepo.setYouTubeAuth(app.cadence.data.YouTubeAuthState()) },
+            )
+            Spacer(Modifier.height(12.dp))
             SearchField(
                 value = query,
                 onValueChange = { query = it; runSearch(it) },
@@ -234,6 +245,70 @@ private fun SbToggle(label: String, checked: Boolean, onChecked: (Boolean) -> Un
             onCheckedChange = onChecked,
             colors = SwitchDefaults.colors(checkedTrackColor = Accent),
         )
+    }
+}
+
+
+@Composable
+private fun AccountPanel(
+    auth: YouTubeAuthState,
+    compact: Boolean,
+    onSignIn: (String) -> Unit,
+    onSignOut: () -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var cookie by remember(auth.cookie) { mutableStateOf(auth.cookie) }
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.03f))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("YouTube Music account", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                Text(
+                    if (auth.isSignedIn) "Signed in · sync liked songs & playlists"
+                    else "Sign in to sync liked songs and playlists",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (auth.isSignedIn) Accent else TextSecondary,
+                )
+            }
+            if (auth.isSignedIn) {
+                TextButton(onClick = onSignOut) { Text("Sign out", color = TextSecondary) }
+            } else {
+                TextButton(onClick = { expanded = !expanded }) {
+                    Text(if (expanded) "Close" else "Sign in", color = Accent)
+                }
+            }
+        }
+        if (!auth.isSignedIn && expanded) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Paste your music.youtube.com cookies to sign in (from browser devtools → Application/Storage → Cookies).",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondary,
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = cookie,
+                onValueChange = { cookie = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("SAPISID=...; __Secure-1PSID=...; ...", color = TextTertiary) },
+                singleLine = !compact,
+                maxLines = if (compact) 3 else 5,
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = { if (cookie.isNotBlank()) onSignIn(cookie) },
+                    enabled = cookie.isNotBlank(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Accent),
+                ) { Text("Save & sign in", color = androidx.compose.ui.graphics.Color.Black) }
+            }
+        }
     }
 }
 
