@@ -81,7 +81,7 @@ class AndroidAudioEngine(context: Context) : AudioEngine {
     }
 
     override fun setSource(track: Track, playWhenReady: Boolean) {
-        player.setMediaItem(MediaItem.fromUri(track.uri))
+        player.setMediaItem(MediaItem.fromUri(track.playbackUri))
         player.prepare()
         player.playWhenReady = playWhenReady
         _state.value = EngineState(
