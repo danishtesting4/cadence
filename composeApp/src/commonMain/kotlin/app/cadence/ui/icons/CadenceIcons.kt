@@ -985,4 +985,28 @@ object CadenceIcons {
             }
         }
     }
+
+
+    val Download: ImageVector by lazy {
+        materialIcon(name = "Download") {
+            materialPath {
+                moveTo(5.0f, 20.0f)
+                horizontalLineToRelative(14.0f)
+                verticalLineToRelative(-2.0f)
+                horizontalLineTo(5.0f)
+                verticalLineToRelative(2.0f)
+                close()
+                moveTo(19.0f, 9.0f)
+                horizontalLineToRelative(-4.0f)
+                verticalLineTo(3.0f)
+                horizontalLineTo(9.0f)
+                verticalLineToRelative(6.0f)
+                horizontalLineTo(5.0f)
+                lineToRelative(7.0f, 7.0f)
+                lineToRelative(7.0f, -7.0f)
+                close()
+            }
+        }
+    }
+
 }

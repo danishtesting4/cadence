@@ -152,6 +152,27 @@ class LibraryRepository(private val scope: CoroutineScope) {
         return id
     }
 
+    fun markDownloaded(trackId: String, localUri: String) {
+        _tracks.value = _tracks.value.map { t ->
+            if (t.id == trackId || (!t.videoId.isNullOrBlank() && t.videoId == trackId)) {
+                t.copy(localUri = localUri, source = TrackSource.DOWNLOADED)
+            } else t
+        }
+        persist(KEY_LIBRARY, json.encodeToString(trackListSerializer, _tracks.value))
+    }
+
+    fun removeDownload(trackId: String) {
+        val t = _tracks.value.firstOrNull { it.id == trackId } ?: return
+        val local = t.localUri
+        _tracks.value = _tracks.value.map {
+            if (it.id == trackId) it.copy(localUri = null, source = if (it.videoId != null) TrackSource.ONLINE else TrackSource.LOCAL)
+            else it
+        }
+        if (!local.isNullOrBlank()) Platform.deleteFile(local)
+        persist(KEY_LIBRARY, json.encodeToString(trackListSerializer, _tracks.value))
+    }
+
+
     fun forgetTrack(track: Track) {
         _tracks.value = _tracks.value.filterNot { it.id == track.id }
         _playlists.value = _playlists.value.map { it.copy(trackIds = it.trackIds - track.id) }

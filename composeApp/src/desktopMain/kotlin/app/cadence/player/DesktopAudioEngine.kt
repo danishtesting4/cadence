@@ -150,7 +150,11 @@ class DesktopAudioEngine : AudioEngine {
         var stream: AudioInputStream? = null
         var dataLine: SourceDataLine? = null
         try {
-            raw = AudioSystem.getAudioInputStream(File(track.uri))
+            val sourcePath = track.playbackUri
+            if (sourcePath.startsWith("http://") || sourcePath.startsWith("https://")) {
+                throw IllegalStateException("Online streaming is not supported on desktop yet")
+            }
+            raw = AudioSystem.getAudioInputStream(File(sourcePath))
             val sourceFormat = raw.format
 
             fun pcmAt(sampleRate: Float) = AudioFormat(

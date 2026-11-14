@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cadence.data.LibraryRepository
 import app.cadence.data.SettingsRepository
+import app.cadence.download.TrackDownloader
 import app.cadence.model.Playlist
 import app.cadence.model.Track
 import app.cadence.online.SponsorBlockClient
@@ -165,6 +166,7 @@ fun App() {
             },
         )
     }
+    val downloader = remember { TrackDownloader(sponsorHttp, online, library) }
     val app = remember { AppState() }
 
     val settings by settingsRepo.settings.collectAsState()
@@ -230,6 +232,7 @@ fun App() {
                         scanning = scanning,
                         online = online,
                         settingsRepo = settingsRepo,
+                        downloader = downloader,
                     )
                 } else {
                     DesktopShell(
@@ -241,6 +244,7 @@ fun App() {
                         scanning = scanning,
                         online = online,
                         settingsRepo = settingsRepo,
+                        downloader = downloader,
                     )
                 }
 
@@ -268,6 +272,7 @@ private fun DesktopShell(
     scanning: Boolean,
     online: YouTubeMusicService,
     settingsRepo: SettingsRepository,
+    downloader: TrackDownloader,
 ) {
     Row(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
         Sidebar(
@@ -289,6 +294,7 @@ private fun DesktopShell(
                     compact = false,
                     online = online,
                     settingsRepo = settingsRepo,
+                    downloader = downloader,
                 )
             }
             DesktopPlayerBar(
@@ -319,6 +325,7 @@ private fun MobileShell(
     scanning: Boolean,
     online: YouTubeMusicService,
     settingsRepo: SettingsRepository,
+    downloader: TrackDownloader,
 ) {
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
         Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -332,6 +339,7 @@ private fun MobileShell(
                 compact = true,
                 online = online,
                 settingsRepo = settingsRepo,
+                downloader = downloader,
             )
         }
         MiniPlayer(player = player, onExpand = { app.nowPlaying = true })
@@ -350,6 +358,7 @@ private fun AppContent(
     compact: Boolean,
     online: YouTubeMusicService,
     settingsRepo: SettingsRepository,
+    downloader: TrackDownloader,
 ) {
     val playlist = app.openPlaylistId?.let { id -> playlists.firstOrNull { it.id == id } }
 
@@ -397,6 +406,7 @@ private fun AppContent(
                 library = library,
                 compact = compact,
                 settingsRepo = settingsRepo,
+                downloader = downloader,
             )
         }
 

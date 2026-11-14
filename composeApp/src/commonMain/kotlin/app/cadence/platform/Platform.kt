@@ -22,6 +22,17 @@ expect object Platform {
 
     fun readState(key: String): String?
     fun writeState(key: String, value: String)
+
+    /** Directory for app-managed downloads/caches (created if needed). */
+    fun downloadsDir(): String
+    /** Write [bytes] to [path], creating parent dirs. Returns true on success. */
+    fun writeFile(path: String, bytes: ByteArray): Boolean
+    /** Delete a file if it exists. */
+    fun deleteFile(path: String): Boolean
+    /** File size in bytes, or 0 if missing. */
+    fun fileSize(path: String): Long
+    fun fileExists(path: String): Boolean
+
     fun nowMs(): Long
 }
 

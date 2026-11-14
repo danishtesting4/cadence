@@ -147,6 +147,21 @@ actual object Platform {
         }
     }
 
+    actual fun downloadsDir(): String = File(dataDirectory, "downloads").apply { mkdirs() }.absolutePath
+
+    actual fun writeFile(path: String, bytes: ByteArray): Boolean = runCatching {
+        val f = File(path)
+        f.parentFile?.mkdirs()
+        f.writeBytes(bytes)
+        true
+    }.getOrDefault(false)
+
+    actual fun deleteFile(path: String): Boolean = runCatching { File(path).delete() }.getOrDefault(false)
+
+    actual fun fileSize(path: String): Long = runCatching { File(path).length() }.getOrDefault(0L)
+
+    actual fun fileExists(path: String): Boolean = runCatching { File(path).isFile }.getOrDefault(false)
+
     actual fun nowMs(): Long = System.currentTimeMillis()
 }
 

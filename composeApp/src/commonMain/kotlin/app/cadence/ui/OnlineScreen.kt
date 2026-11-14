@@ -45,6 +45,8 @@ import app.cadence.data.LibraryRepository
 import app.cadence.data.SettingsRepository
 import app.cadence.data.SponsorBlockPreferences
 import app.cadence.data.YouTubeAuthState
+import app.cadence.download.DownloadState
+import app.cadence.download.TrackDownloader
 import app.cadence.model.Playlist
 import app.cadence.model.Track
 import app.cadence.online.OnlinePlaylistInfo
@@ -71,10 +73,12 @@ fun OnlineScreen(
     library: LibraryRepository,
     compact: Boolean,
     settingsRepo: SettingsRepository,
+    downloader: TrackDownloader,
 ) {
     val scope = rememberCoroutineScope()
     val playerState by player.state.collectAsState()
     val settings by settingsRepo.settings.collectAsState()
+    val downloadStates by downloader.states.collectAsState()
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<Track>>(emptyList()) }
     var searching by remember { mutableStateOf(false) }
@@ -217,15 +221,18 @@ fun OnlineScreen(
             }
             results.isNotEmpty() -> {
                 itemsIndexed(results, key = { _, t -> t.id }) { index, track ->
+                    val dlState = downloadStates[track.videoId ?: track.id] ?: downloader.stateFor(track)
                     OnlineResultRow(
                         index = index,
                         track = track,
                         isCurrent = playerState.track?.id == track.id || playerState.track?.videoId == track.videoId,
                         isPlaying = playerState.isPlaying,
                         compact = compact,
+                        downloadState = dlState,
                         onPlay = { player.playQueue(results, index) },
                         onPlayNext = { player.playNext(track) },
                         onAddToQueue = { player.addToQueue(track) },
+                        onDownload = { scope.launch { downloader.download(track) } },
                     )
                 }
             }
@@ -447,9 +454,11 @@ private fun OnlineResultRow(
     isCurrent: Boolean,
     isPlaying: Boolean,
     compact: Boolean,
+    downloadState: DownloadState,
     onPlay: () -> Unit,
     onPlayNext: () -> Unit,
     onAddToQueue: () -> Unit,
+    onDownload: () -> Unit,
 ) {
     val bg = if (isCurrent) Accent.copy(alpha = 0.09f) else androidx.compose.ui.graphics.Color.Transparent
     Row(
@@ -506,6 +515,13 @@ private fun OnlineResultRow(
         if (!compact) {
             IconButton(onClick = onAddToQueue, modifier = Modifier.size(30.dp)) {
                 Icon(CadenceIcons.PlaylistAdd, "Add to queue", tint = TextTertiary, modifier = Modifier.size(18.dp))
+            }
+        }
+        when (downloadState) {
+            DownloadState.DOWNLOADING -> CircularProgressIndicator(Modifier.size(16.dp).padding(horizontal = 4.dp), strokeWidth = 2.dp, color = Accent)
+            DownloadState.DONE -> Icon(CadenceIcons.Check, "Downloaded", tint = Accent, modifier = Modifier.size(18.dp).padding(horizontal = 4.dp))
+            DownloadState.FAILED, DownloadState.IDLE -> IconButton(onClick = onDownload, modifier = Modifier.size(30.dp)) {
+                Icon(CadenceIcons.Download, "Save offline", tint = TextTertiary, modifier = Modifier.size(18.dp))
             }
         }
     }
