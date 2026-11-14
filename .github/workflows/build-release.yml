@@ -23,13 +23,13 @@ jobs:
         include:
           - os: windows-latest
             build_cmd: "./gradlew :composeApp:packageReleaseExe --no-daemon && (./gradlew :composeApp:packageReleaseMsi --no-daemon || echo 'MSI packaging failed (WiX may be unavailable); EXE was built.')"
-            artifact_glob: "composeApp/build/compose/binaries/main-release/msi/*,composeApp/build/compose/binaries/main-release/exe/*"
+            artifact_glob: "composeApp/build/compose/binaries/main-release"
           - os: ubuntu-latest
             build_cmd: "./gradlew :composeApp:packageReleaseDeb --no-daemon"
-            artifact_glob: "composeApp/build/compose/binaries/main-release/deb/*"
+            artifact_glob: "composeApp/build/compose/binaries/main-release"
           - os: macos-latest
             build_cmd: "./gradlew :composeApp:packageReleaseDmg --no-daemon"
-            artifact_glob: "composeApp/build/compose/binaries/main-release/dmg/*"
+            artifact_glob: "composeApp/build/compose/binaries/main-release"
 
     steps:
       - name: Checkout
@@ -52,7 +52,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cadence-${{ matrix.os }}
-          path: ${{ matrix.artifact_glob }}
+          path: |
+            ${{ matrix.artifact_glob }}
           if-no-files-found: error
 
       - name: Attach to release
