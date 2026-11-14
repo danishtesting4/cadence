@@ -3,8 +3,9 @@
 A free, open-source music player for **desktop and Android**, built from one
 Kotlin Multiplatform + Compose Multiplatform codebase.
 
-Cadence plays music that is already on your device. No accounts, no ads, no
-telemetry, and no network connection required.
+Cadence plays music that is already on your device, and can also search and
+stream from **YouTube Music** (with optional sign-in sync and offline saves).
+No ads, no telemetry; the local player works fully offline.
 
 ![Cadence library view](docs/screenshot.png)
 
@@ -25,6 +26,13 @@ telemetry, and no network connection required.
 - **Persistence** — library and playlists survive restarts.
 - **Keyboard shortcuts** on desktop: `Space` toggles playback, `←`/`→` seek
   back/forward 5 seconds.
+- **YouTube Music** — search songs, stream them, and optionally sign in to sync
+  liked songs and saved playlists.
+- **SponsorBlock** — automatically skip sponsors, self-promos, interaction
+  reminders, intros, outros, previews, filler and non-music segments, with
+  per-category toggles (fetched from `sponsor.ajay.app`, fails open).
+- **Offline saves** — download online tracks for offline playback, with progress,
+  cancel, storage usage and one-tap clearing.
 - **Dark, responsive UI** — a sidebar layout on desktop and a bottom-nav layout
   on phones.
 
@@ -136,11 +144,15 @@ playback engine.
 
 | Platform | Engine | Formats |
 | --- | --- | --- |
-| Desktop | Java Sound + soundlibs SPI codecs | MP3, FLAC, OGG, WAV (AAC/M4A not supported) |
+| Desktop | FFmpeg (optional) or Java Sound + soundlibs SPI | With FFmpeg: any codec FFmpeg supports (incl. AAC/M4A, Opus/WebM). Without: MP3, FLAC, OGG, WAV |
 | Android | AndroidX Media3 ExoPlayer | Whatever the device codecs support (MP3, AAC/M4A, FLAC, OGG, Opus, WAV) |
 
-On desktop, if the audio device does not expose the file's native sample rate,
-the engine resamples to 44.1 kHz or 48 kHz automatically.
+Desktop decoding prefers **FFmpeg** when available, which covers the AAC/M4A and
+Opus/WebM streams YouTube serves. It is detected on `PATH`, via
+`-Dcadence.ffmpeg=/path/to/ffmpeg`, or in common install locations. Without FFmpeg
+the engine falls back to Java Sound (MP3/FLAC/OGG/WAV). If the audio device does
+not expose the file's native sample rate, the engine resamples to 44.1 kHz or
+48 kHz automatically.
 
 ### Data storage
 
@@ -160,12 +172,24 @@ Cadence is at **v0.1.0**, an early but usable release.
 - [x] Playlists
 - [x] Queue, shuffle, repeat, seek, volume
 - [x] Desktop and Android packaging
+- [x] YouTube Music search and streaming (Android and desktop)
+- [x] YouTube Music sign-in (Android WebView) and liked/playlist sync
+- [x] Offline downloads with progress, cancel and storage management
+- [x] SponsorBlock segment skipping with configurable categories
 - [ ] Android background playback with media notifications
 - [ ] MPRIS / media key integration on desktop
 - [ ] Drag-and-drop files onto the desktop window
 - [ ] Waveform/visualizer and crossfade
-- [ ] Additional providers (for example YouTube Music) behind the same model
+- [ ] MPRIS / media key integration on desktop
 - [ ] Automated tests and CI builds
+
+### YouTube Music notes
+
+YouTube/InnerTube endpoints are undocumented and change frequently, so search,
+stream resolution and sync may need maintenance as YouTube evolves. Streaming and
+downloading third-party content may conflict with YouTube's Terms of Service; use
+only content you have the right to access. Sign-in cookies are stored locally on
+your device and never logged or uploaded.
 
 ## Contributing
 
