@@ -60,19 +60,29 @@ import app.cadence.ui.theme.Surface3
 import app.cadence.ui.theme.TextPrimary
 import app.cadence.ui.theme.TextSecondary
 import app.cadence.ui.theme.TextTertiary
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsBytes
 
 object ArtworkCache {
     private val cache = LinkedHashMap<String, ImageBitmap>()
+    private val http by lazy { io.ktor.client.HttpClient(io.ktor.client.engine.okhttp.OkHttp) }
 
     fun peek(id: String): ImageBitmap? = cache[id]
 
     suspend fun load(track: Track): ImageBitmap? {
         cache[track.id]?.let { return it }
-        val bytes = Platform.loadArtwork(track) ?: return null
-        val bitmap = bytes.toImageBitmap() ?: return null
+        val bytes = Platform.loadArtwork(track) ?: loadRemote(track.artworkUrl)
+        val bitmap = bytes?.toImageBitmap() ?: return null
         if (cache.size > 64) cache.remove(cache.keys.first())
         cache[track.id] = bitmap
         return bitmap
+    }
+
+    private suspend fun loadRemote(url: String?): ByteArray? {
+        if (url.isNullOrBlank()) return null
+        return runCatching {
+            http.get(url).bodyAsBytes()
+        }.getOrNull()
     }
 }
 
