@@ -180,8 +180,9 @@ Cadence is at **v0.1.0**, an early but usable release.
 - [ ] MPRIS / media key integration on desktop
 - [ ] Drag-and-drop files onto the desktop window
 - [ ] Waveform/visualizer and crossfade
+- [x] Android background playback with media notification service
 - [ ] MPRIS / media key integration on desktop
-- [ ] Automated tests and CI builds
+- [ ] Automated Windows/macOS smoke tests
 
 ### YouTube Music notes
 
