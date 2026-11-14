@@ -40,5 +40,37 @@
 -keep class io.ktor.client.engine.cio.** { *; }
 -dontwarn io.ktor.server.**
 
+# OpenSSL / platform providers referenced but not present on Android/JVM.
+-dontwarn org.conscrypt.**
+-dontwarn org.conscrypt.Conscrypt**
+-dontwarn org.openjsse.**
+-dontwarn org.openjsse.net.ssl.SSLSocket
+-dontwarn org.openjsse.net.ssl.SSLParameters
+-dontwarn org.bouncycastle.jsse.provider.**
+
+# Test / logging classes referenced by third-party libraries but not required at runtime.
+-dontwarn com.ibm.uvm.tools.**
+-dontwarn junit.runner.**
+-dontwarn junit.framework.**
+-dontwarn org.slf4j.helpers.**
+-dontwarn org.jaudiotagger.**
+-dontwarn android.os.Build
+
+# GraalVM native image support classes (compile-time only).
+-dontwarn org.graalvm.nativeimage.hosted.**
+-dontwarn com.oracle.svm.core.annotate.**
+-dontwarn org.bouncycastle.jsse.**
+-dontwarn org.bouncycastle.jsse.provider.**
+-dontwarn org.bouncycastle.**
+-dontwarn org.conscrypt.**
+-dontwarn com.google.android.**
+-dontwarn com.sun.**
+-dontwarn java.awt.**
+-dontwarn javax.crypto.**
+-dontwarn javax.net.**
+-dontwarn javax.security.**
+-dontwarn javax.sound.**
+-dontwarn javax.xml.**
+-dontwarn sun.**
 # Coroutines internals are referenced reflectively by some libraries.
 -dontwarn kotlinx.coroutines.**
