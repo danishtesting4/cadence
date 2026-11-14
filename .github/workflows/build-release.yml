@@ -23,7 +23,7 @@ jobs:
         include:
           - os: windows-latest
             build_cmd: "./gradlew :composeApp:packageReleaseExe --no-daemon && (./gradlew :composeApp:packageReleaseMsi --no-daemon || echo 'MSI packaging failed (WiX may be unavailable); EXE was built.')"
-            artifact_glob: "composeApp/build/compose/binaries/main-release/{msi,exe}/*"
+            artifact_glob: "composeApp/build/compose/binaries/main-release/msi/*,composeApp/build/compose/binaries/main-release/exe/*"
           - os: ubuntu-latest
             build_cmd: "./gradlew :composeApp:packageReleaseDeb --no-daemon"
             artifact_glob: "composeApp/build/compose/binaries/main-release/deb/*"
