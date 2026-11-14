@@ -135,34 +135,81 @@ class YouTubeMusicService {
         innerTube.useLoginForBrowse = false
     }
 
-    /** Fetch liked songs for the signed-in account. */
-    suspend fun getLikedSongs(): List<Track> = withContext(Dispatchers.Default) {
-        runCatching {
-            val body = innerTube.browse(
-                YouTubeClient.WEB_REMIX, "FEmusic_liked_videos", null, null, true,
-            ).bodyAsText()
-            parseSongResults(body)
-        }.getOrDefault(emptyList())
+    /** Fetch liked songs for the signed-in account (follows continuations). */
+    suspend fun getLikedSongs(maxPages: Int = 15): List<Track> = withContext(Dispatchers.Default) {
+        fetchAllSongs("FEmusic_liked_videos", maxPages)
     }
 
-    /** Fetch saved/library playlists for the signed-in account. */
-    suspend fun getSavedPlaylists(): List<OnlinePlaylistInfo> = withContext(Dispatchers.Default) {
-        runCatching {
-            val body = innerTube.browse(
-                YouTubeClient.WEB_REMIX, "FEmusic_liked_playlists", null, null, true,
-            ).bodyAsText()
-            parsePlaylistResults(body)
-        }.getOrDefault(emptyList())
+    /** Fetch saved/library playlists for the signed-in account (follows continuations). */
+    suspend fun getSavedPlaylists(maxPages: Int = 15): List<OnlinePlaylistInfo> = withContext(Dispatchers.Default) {
+        fetchAllPlaylists("FEmusic_liked_playlists", maxPages)
     }
 
-    /** Fetch tracks inside an online playlist/album by its browseId. */
-    suspend fun getPlaylistTracks(browseId: String): List<Track> = withContext(Dispatchers.Default) {
-        runCatching {
-            val body = innerTube.browse(
-                YouTubeClient.WEB_REMIX, browseId, null, null, true,
-            ).bodyAsText()
-            parseSongResults(body)
-        }.getOrDefault(emptyList())
+    /** Fetch tracks inside an online playlist/album by its browseId (follows continuations). */
+    suspend fun getPlaylistTracks(browseId: String, maxPages: Int = 20): List<Track> = withContext(Dispatchers.Default) {
+        fetchAllSongs(browseId, maxPages)
+    }
+
+    private suspend fun fetchAllSongs(browseId: String, maxPages: Int): List<Track> {
+        val all = linkedMapOf<String, Track>()
+        var continuation: String? = null
+        var pages = 0
+        while (pages < maxPages) {
+            val body = runCatching {
+                if (continuation == null) {
+                    innerTube.browse(YouTubeClient.WEB_REMIX, browseId, null, null, true).bodyAsText()
+                } else {
+                    innerTube.browse(YouTubeClient.WEB_REMIX, "", null, continuation, true).bodyAsText()
+                }
+            }.getOrNull() ?: break
+            parseSongResults(body).forEach { t -> all.putIfAbsent(t.videoId ?: t.id, t) }
+            continuation = extractContinuation(body)
+            pages++
+            if (continuation.isNullOrBlank()) break
+        }
+        return all.values.toList()
+    }
+
+    private suspend fun fetchAllPlaylists(browseId: String, maxPages: Int): List<OnlinePlaylistInfo> {
+        val all = linkedMapOf<String, OnlinePlaylistInfo>()
+        var continuation: String? = null
+        var pages = 0
+        while (pages < maxPages) {
+            val body = runCatching {
+                if (continuation == null) {
+                    innerTube.browse(YouTubeClient.WEB_REMIX, browseId, null, null, true).bodyAsText()
+                } else {
+                    innerTube.browse(YouTubeClient.WEB_REMIX, "", null, continuation, true).bodyAsText()
+                }
+            }.getOrNull() ?: break
+            parsePlaylistResults(body).forEach { p -> all.putIfAbsent(p.browseId, p) }
+            continuation = extractContinuation(body)
+            pages++
+            if (continuation.isNullOrBlank()) break
+        }
+        return all.values.toList()
+    }
+
+    private fun extractContinuation(raw: String): String? {
+        val root = runCatching { json.parseToJsonElement(raw).jsonObject }.getOrNull() ?: return null
+        val tokens = mutableListOf<String>()
+        fun walk(el: JsonElement) {
+            when (el) {
+                is JsonObject -> {
+                    el["nextContinuationData"]?.jsonObject?.str("continuation")?.let { if (it.isNotBlank()) tokens += it }
+                    el["continuation"]?.let { v ->
+                        if (v is kotlinx.serialization.json.JsonPrimitive && v.isString) {
+                            v.contentOrNull?.let { if (it.isNotBlank()) tokens += it }
+                        }
+                    }
+                    el.values.forEach(::walk)
+                }
+                is JsonArray -> el.forEach(::walk)
+                else -> Unit
+            }
+        }
+        walk(root)
+        return tokens.firstOrNull { it.length > 10 }
     }
 
     fun close() {
