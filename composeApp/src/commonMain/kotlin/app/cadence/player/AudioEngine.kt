@@ -9,6 +9,7 @@ data class EngineState(
     val isBuffering: Boolean = false,
     val positionMs: Long = 0L,
     val durationMs: Long = 0L,
+    val volume: Float = 1f,
 )
 
 sealed interface EngineEvent {
