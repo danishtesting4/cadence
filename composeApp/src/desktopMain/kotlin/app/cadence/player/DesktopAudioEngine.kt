@@ -15,6 +15,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
+import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 import javax.sound.sampled.AudioFormat
 import javax.sound.sampled.AudioInputStream
 import javax.sound.sampled.AudioSystem
@@ -24,8 +27,11 @@ import kotlin.concurrent.thread
 import kotlin.math.log10
 
 /**
- * Desktop playback on top of Java Sound. MP3/OGG/FLAC decoders are supplied by
- * the soundlibs SPI jars, so no native dependencies are required.
+ * Desktop playback on top of Java Sound. Local files (MP3/FLAC/OGG/WAV via
+ * soundlibs SPI) are supported. HTTP sources are downloaded to a temp/cache file
+ * first so they can be decoded by available SPIs; formats without a decoder will
+ * fail gracefully (common YT web formats like WebM/Opus or M4A/AAC may need
+ * additional codecs on the host).
  */
 class DesktopAudioEngine : AudioEngine {
 
@@ -42,6 +48,7 @@ class DesktopAudioEngine : AudioEngine {
     @Volatile private var stopRequested = false
     @Volatile private var volume = 0.8f
     @Volatile private var currentTrack: Track? = null
+    @Volatile private var currentHeaders: Map<String, String> = emptyMap()
     @Volatile private var baseFrame = 0L
     @Volatile private var frameRate = 44_100
     @Volatile private var totalFrames = 0L
@@ -49,6 +56,7 @@ class DesktopAudioEngine : AudioEngine {
 
     private var worker: Thread? = null
     private var line: SourceDataLine? = null
+    private var tempStreamFile: File? = null
 
     init {
         scope.launch {
@@ -73,6 +81,7 @@ class DesktopAudioEngine : AudioEngine {
     override fun setSource(track: Track, playWhenReady: Boolean, headers: Map<String, String>) {
         stopWorker()
         currentTrack = track
+        currentHeaders = headers
         playRequested = playWhenReady
         ended = false
         baseFrame = 0L
@@ -125,9 +134,10 @@ class DesktopAudioEngine : AudioEngine {
 
     private fun startWorker(startMs: Long) {
         val track = currentTrack ?: return
+        val headers = currentHeaders
         stopRequested = false
         val thread = thread(name = "cadence-audio", isDaemon = true) {
-            runPlayback(track, startMs)
+            runPlayback(track, headers, startMs)
         }
         worker = thread
     }
@@ -143,18 +153,58 @@ class DesktopAudioEngine : AudioEngine {
         }
         runCatching { line?.close() }
         line = null
+        runCatching { tempStreamFile?.takeIf { it.exists() }?.delete() }
+        tempStreamFile = null
     }
 
-    private fun runPlayback(track: Track, startMs: Long) {
+    private fun resolveToFile(track: Track, headers: Map<String, String>): File {
+        val source = track.playbackUri
+        if (!source.startsWith("http://") && !source.startsWith("https://")) {
+            return File(source)
+        }
+        val suffix = guessExt(source)
+        val tmp = File.createTempFile("cadence-stream-", suffix)
+        tempStreamFile = tmp
+        downloadToFile(source, headers, tmp)
+        return tmp
+    }
+
+    private fun downloadToFile(url: String, headers: Map<String, String>, out: File) {
+        val conn = (URL(url).openConnection() as HttpURLConnection).apply {
+            instanceFollowRedirects = true
+            connectTimeout = 15_000
+            readTimeout = 30_000
+            setRequestProperty("User-Agent", "Cadence/1.0")
+            headers.forEach { (k, v) -> setRequestProperty(k, v) }
+        }
+        try {
+            conn.connect()
+            val code = conn.responseCode
+            if (code !in 200..299) error("HTTP $code")
+            conn.inputStream.use { input ->
+                FileOutputStream(out).use { output -> input.copyTo(output) }
+            }
+        } finally {
+            conn.disconnect()
+        }
+    }
+
+    private fun guessExt(url: String): String = when {
+        url.contains("mime=audio%2Fwebm") || url.contains(".webm") -> ".webm"
+        url.contains("mime=audio%2Fmp4") || url.contains(".m4a") || url.contains(".mp4") -> ".m4a"
+        url.contains(".ogg") -> ".ogg"
+        url.contains(".opus") -> ".opus"
+        url.contains(".mp3") -> ".mp3"
+        else -> ".audio"
+    }
+
+    private fun runPlayback(track: Track, headers: Map<String, String>, startMs: Long) {
         var raw: AudioInputStream? = null
         var stream: AudioInputStream? = null
         var dataLine: SourceDataLine? = null
         try {
-            val sourcePath = track.playbackUri
-            if (sourcePath.startsWith("http://") || sourcePath.startsWith("https://")) {
-                throw IllegalStateException("Online streaming is not supported on desktop yet")
-            }
-            raw = AudioSystem.getAudioInputStream(File(sourcePath))
+            val file = resolveToFile(track, headers)
+            raw = AudioSystem.getAudioInputStream(file)
             val sourceFormat = raw.format
 
             fun pcmAt(sampleRate: Float) = AudioFormat(
@@ -268,7 +318,11 @@ class DesktopAudioEngine : AudioEngine {
             }
         } catch (t: Throwable) {
             if (!stopRequested) {
-                _events.tryEmit(EngineEvent.Error(t.message ?: "Could not play this file"))
+                val msg = t.message ?: "Could not play this track"
+                val hint = if (msg.contains("Unsupported", true) || msg.contains("mark/reset", true)) {
+                    "$msg (this audio format may not be supported on desktop yet)"
+                } else msg
+                _events.tryEmit(EngineEvent.Error(hint))
             }
         } finally {
             runCatching { dataLine?.stop() }
