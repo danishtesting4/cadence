@@ -67,7 +67,13 @@ class CadenceIconsTest {
     private fun ImageVector.nodeCount(): Int = root.countNodes()
 
     private fun VectorGroup.countPaths(): Int =
-        sumOf { node -> if (node is VectorPath) 1 else (node as? VectorGroup)?.countPaths() ?: 0 }
+        sumOf { node ->
+            when (node) {
+                is VectorPath -> 1
+                is VectorGroup -> node.countPaths()
+                else -> 0
+            }
+        }
 
     private fun VectorGroup.countNodes(): Int =
         sumOf { node ->

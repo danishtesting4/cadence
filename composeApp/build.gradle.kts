@@ -27,6 +27,10 @@ kotlin {
                 implementation(compose.ui)
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.serialization.json)
+                implementation(libs.innertubex)
+                implementation(libs.ktor.client.core)
+                implementation(libs.ktor.client.content.negotiation)
+                implementation(libs.ktor.serialization.kotlinx.json)
             }
         }
         val commonTest by getting {
@@ -42,6 +46,7 @@ kotlin {
                 implementation(libs.media3.exoplayer)
                 implementation(libs.media3.session)
                 implementation(libs.kotlinx.coroutines.android)
+                implementation(libs.ktor.client.okhttp)
             }
         }
         val desktopMain by getting {
@@ -53,6 +58,7 @@ kotlin {
                 implementation(libs.vorbisspi)
                 implementation(libs.jflac.codec)
                 implementation(libs.tritonus.share)
+                implementation(libs.ktor.client.okhttp)
             }
         }
     }
@@ -60,12 +66,12 @@ kotlin {
 
 android {
     namespace = "app.cadence"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "app.cadence"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 37
         versionCode = 1
         versionName = "0.1.0"
     }
