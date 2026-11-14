@@ -7,7 +7,6 @@ Cadence plays music that is already on your device, and can also search and
 stream from **YouTube Music** (with optional sign-in sync and offline saves).
 No ads, no telemetry; the local player works fully offline.
 
-![Cadence library view](docs/screenshot.png)
 
 ## Features
 
