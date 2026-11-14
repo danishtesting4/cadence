@@ -278,12 +278,17 @@ class YouTubeMusicService {
         // Typical: [Type, " • ", Artist, " • ", Album, " • ", Duration] or [Artist, " • ", Duration]
         val durationText = subtitleParts.lastOrNull { it.contains(':') && it.any(Char::isDigit) }
         val meta = subtitleParts.filter { it != durationText }
-        val artist = meta.firstOrNull().orEmpty()
-        val album = meta.drop(1).firstOrNull().orEmpty()
+        val typeToken = MusicFilter.typeTokenOf(meta)
+        val rest = if (typeToken.isNotBlank() && meta.firstOrNull() == typeToken) meta.drop(1) else meta
+        val artist = rest.firstOrNull().orEmpty()
+        val album = rest.drop(1).firstOrNull().orEmpty()
 
         val thumbs = item.obj("thumbnail")?.obj("musicThumbnailRenderer")
             ?.obj("thumbnail")?.arr("thumbnails")
         val thumbUrl = thumbs?.mapNotNull { it.obj()?.str("url") }?.lastOrNull()
+
+        if (!MusicFilter.isPlausibleTitle(title)) return null
+        if (!MusicFilter.isSongItem(title, typeToken, hasVideoId = true)) return null
 
         return Track(
             id = "yt:$videoId",
