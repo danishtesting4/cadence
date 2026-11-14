@@ -2,6 +2,7 @@ package app.cadence.player
 
 import app.cadence.model.Track
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,27 +31,45 @@ data class PlayerUiState(
         get() = if (index < 0) emptyList() else queue.drop(index + 1)
 }
 
+/** Result of resolving an online track into a playable stream. */
+data class ResolvedPlayback(
+    val url: String,
+    val headers: Map<String, String> = emptyMap(),
+    val durationMs: Long = 0L,
+)
+
+/** A segment that should be skipped during playback. */
+data class PlaybackSkipSegment(val startMs: Long, val endMs: Long)
+
 /**
  * Queue, shuffle and repeat live here so the behaviour is identical on every
- * platform; [AudioEngine] only knows how to play a single file.
+ * platform; [AudioEngine] only knows how to play a single source.
  */
 class PlayerController(
     private val engine: AudioEngine,
     private val scope: CoroutineScope,
+    private val resolvePlayback: (suspend (Track) -> ResolvedPlayback?)? = null,
+    private val fetchSkipSegments: (suspend (videoId: String) -> List<PlaybackSkipSegment>)? = null,
 ) {
     private val _state = MutableStateFlow(PlayerUiState())
     val state: StateFlow<PlayerUiState> = _state.asStateFlow()
 
     private val shuffleBag = ArrayDeque<Int>()
+    private var resolveJob: Job? = null
+    private var skipJob: Job? = null
+    private var skipSegments: List<PlaybackSkipSegment> = emptyList()
+    private var skipIndex: Int = 0
+    private var lastSkipSeekMs: Long = -1L
 
     init {
         scope.launch {
             engine.state.collect { e ->
+                val pos = applySkipSegments(e.positionMs, e.isPlaying)
                 _state.update { current ->
                     current.copy(
                         isPlaying = e.isPlaying,
                         isBuffering = e.isBuffering,
-                        positionMs = e.positionMs,
+                        positionMs = pos,
                         durationMs = if (e.durationMs > 0) e.durationMs else current.durationMs,
                     )
                 }
@@ -117,6 +136,9 @@ class PlayerController(
         val bounded = positionMs.coerceIn(0L, if (current.durationMs > 0) current.durationMs else positionMs)
         engine.seekTo(bounded)
         _state.update { it.copy(positionMs = bounded) }
+        // allow re-skipping if user seeks back, but avoid immediate re-trigger loops
+        if (bounded < lastSkipSeekMs - 1500L) lastSkipSeekMs = -1L
+        resetSkipIndex(bounded)
     }
 
     fun seekRelative(deltaMs: Long) {
@@ -201,7 +223,12 @@ class PlayerController(
     private fun startCurrent() {
         val current = _state.value
         val track = current.queue.getOrNull(current.index) ?: return
-        engine.setSource(track, playWhenReady = true)
+        resolveJob?.cancel()
+        skipJob?.cancel()
+        skipSegments = emptyList()
+        skipIndex = 0
+        lastSkipSeekMs = -1L
+
         _state.update {
             it.copy(
                 track = track,
@@ -211,6 +238,37 @@ class PlayerController(
                 isBuffering = true,
                 error = null,
             )
+        }
+
+        if (track.isOnline && resolvePlayback != null) {
+            resolveJob = scope.launch {
+                val resolved = runCatching { resolvePlayback.invoke(track) }.getOrNull()
+                if (_state.value.track?.id != track.id) return@launch
+                if (resolved == null) {
+                    engine.pause()
+                    _state.update { it.copy(isPlaying = false, isBuffering = false, error = "Could not load this online track") }
+                    return@launch
+                }
+                val playable = track.copy(
+                    uri = resolved.url,
+                    durationMs = if (resolved.durationMs > 0) resolved.durationMs else track.durationMs,
+                )
+                engine.setSource(playable, playWhenReady = true, headers = resolved.headers)
+                _state.update { it.copy(durationMs = playable.durationMs) }
+            }
+        } else {
+            engine.setSource(track, playWhenReady = true)
+        }
+
+        val videoId = track.videoId
+        if (videoId != null && fetchSkipSegments != null) {
+            skipJob = scope.launch {
+                val segs = runCatching { fetchSkipSegments.invoke(videoId) }.getOrDefault(emptyList())
+                if (_state.value.track?.id == track.id) {
+                    skipSegments = segs.sortedBy { it.startMs }
+                    skipIndex = 0
+                }
+            }
         }
     }
 
@@ -228,6 +286,24 @@ class PlayerController(
         }
         _state.update { it.copy(index = target) }
         startCurrent()
+    }
+
+    private fun applySkipSegments(positionMs: Long, isPlaying: Boolean): Long {
+        if (!isPlaying || skipSegments.isEmpty()) return positionMs
+        while (skipIndex < skipSegments.size && positionMs >= skipSegments[skipIndex].endMs) skipIndex++
+        if (skipIndex < skipSegments.size) {
+            val seg = skipSegments[skipIndex]
+            if (positionMs in seg.startMs until seg.endMs && kotlin.math.abs(lastSkipSeekMs - seg.endMs) > 500L) {
+                lastSkipSeekMs = seg.endMs
+                engine.seekTo(seg.endMs)
+                return seg.endMs
+            }
+        }
+        return positionMs
+    }
+
+    private fun resetSkipIndex(positionMs: Long) {
+        skipIndex = skipSegments.indexOfFirst { positionMs < it.endMs }.let { if (it < 0) skipSegments.size else it }
     }
 
     private fun nextIndex(current: PlayerUiState): Int? {

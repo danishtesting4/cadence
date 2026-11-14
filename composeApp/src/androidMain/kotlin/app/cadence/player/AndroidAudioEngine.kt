@@ -6,7 +6,10 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import app.cadence.model.Track
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,7 +25,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-class AndroidAudioEngine(context: Context) : AudioEngine {
+class AndroidAudioEngine(private val context: Context) : AudioEngine {
 
     private val player = ExoPlayer.Builder(context).build().apply {
         setAudioAttributes(
@@ -80,8 +83,19 @@ class AndroidAudioEngine(context: Context) : AudioEngine {
         }
     }
 
-    override fun setSource(track: Track, playWhenReady: Boolean) {
-        player.setMediaItem(MediaItem.fromUri(track.playbackUri))
+    override fun setSource(track: Track, playWhenReady: Boolean, headers: Map<String, String>) {
+        val uri = track.playbackUri
+        val mediaItem = MediaItem.fromUri(uri)
+        if (headers.isNotEmpty() && (uri.startsWith("http://") || uri.startsWith("https://"))) {
+            val http = DefaultHttpDataSource.Factory()
+                .setAllowCrossProtocolRedirects(true)
+                .setDefaultRequestProperties(headers)
+            val dataSource = DefaultDataSource.Factory(context, http)
+            val source = DefaultMediaSourceFactory(dataSource).createMediaSource(mediaItem)
+            player.setMediaSource(source)
+        } else {
+            player.setMediaItem(mediaItem)
+        }
         player.prepare()
         player.playWhenReady = playWhenReady
         _state.value = EngineState(

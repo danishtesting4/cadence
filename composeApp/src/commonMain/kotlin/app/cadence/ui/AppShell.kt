@@ -64,8 +64,12 @@ import androidx.compose.ui.unit.sp
 import app.cadence.data.LibraryRepository
 import app.cadence.model.Playlist
 import app.cadence.model.Track
+import app.cadence.online.SponsorBlockClient
+import app.cadence.online.YouTubeMusicService
 import app.cadence.platform.createAudioEngine
+import app.cadence.player.PlaybackSkipSegment
 import app.cadence.player.PlayerController
+import app.cadence.player.ResolvedPlayback
 import app.cadence.ui.components.hoverBackground
 import app.cadence.ui.icons.CadenceIcons
 import app.cadence.ui.theme.Accent
@@ -80,9 +84,11 @@ import app.cadence.ui.theme.Surface3
 import app.cadence.ui.theme.TextPrimary
 import app.cadence.ui.theme.TextSecondary
 import app.cadence.ui.theme.TextTertiary
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.delay
 
-enum class Screen { Library, Playlists }
+enum class Screen { Library, Playlists, Online }
 
 enum class LibraryView(val label: String) {
     Songs("Songs"),
@@ -135,11 +141,34 @@ fun App() {
     val scope = rememberCoroutineScope()
     val engine = remember { createAudioEngine() }
     val library = remember { LibraryRepository(scope) }
-    val player = remember { PlayerController(engine, scope) }
+    val online = remember { YouTubeMusicService() }
+    val sponsorHttp = remember { HttpClient(OkHttp) }
+    val sponsorBlock = remember { SponsorBlockClient(sponsorHttp) }
+    val player = remember {
+        PlayerController(
+            engine = engine,
+            scope = scope,
+            resolvePlayback = { track ->
+                val stream = online.resolveStream(track) ?: return@PlayerController null
+                ResolvedPlayback(
+                    url = stream.url,
+                    headers = stream.headers,
+                    durationMs = 0L,
+                )
+            },
+            fetchSkipSegments = { videoId ->
+                sponsorBlock.getSkipSegments(videoId).map { PlaybackSkipSegment(it.startMs, it.endMs) }
+            },
+        )
+    }
     val app = remember { AppState() }
 
-    DisposableEffect(engine) {
-        onDispose { engine.release() }
+    DisposableEffect(Unit) {
+        onDispose {
+            engine.release()
+            online.close()
+            sponsorHttp.close()
+        }
     }
 
     val tracks by library.tracks.collectAsState()
@@ -188,6 +217,7 @@ fun App() {
                         tracks = tracks,
                         playlists = playlists,
                         scanning = scanning,
+                        online = online,
                     )
                 } else {
                     DesktopShell(
@@ -197,6 +227,7 @@ fun App() {
                         tracks = tracks,
                         playlists = playlists,
                         scanning = scanning,
+                        online = online,
                     )
                 }
 
@@ -222,6 +253,7 @@ private fun DesktopShell(
     tracks: List<Track>,
     playlists: List<Playlist>,
     scanning: Boolean,
+    online: YouTubeMusicService,
 ) {
     Row(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
         Sidebar(
@@ -241,6 +273,7 @@ private fun DesktopShell(
                     playlists = playlists,
                     scanning = scanning,
                     compact = false,
+                    online = online,
                 )
             }
             DesktopPlayerBar(
@@ -269,6 +302,7 @@ private fun MobileShell(
     tracks: List<Track>,
     playlists: List<Playlist>,
     scanning: Boolean,
+    online: YouTubeMusicService,
 ) {
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
         Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -280,6 +314,7 @@ private fun MobileShell(
                 playlists = playlists,
                 scanning = scanning,
                 compact = true,
+                online = online,
             )
         }
         MiniPlayer(player = player, onExpand = { app.nowPlaying = true })
@@ -296,6 +331,7 @@ private fun AppContent(
     playlists: List<Playlist>,
     scanning: Boolean,
     compact: Boolean,
+    online: YouTubeMusicService,
 ) {
     val playlist = app.openPlaylistId?.let { id -> playlists.firstOrNull { it.id == id } }
 
@@ -332,6 +368,16 @@ private fun AppContent(
                 library = library,
                 compact = compact,
                 onBack = { app.collection = null },
+            )
+        }
+
+        app.screen == Screen.Online -> {
+            OnlineScreen(
+                online = online,
+                player = player,
+                playlists = playlists,
+                library = library,
+                compact = compact,
             )
         }
 
@@ -409,6 +455,16 @@ private fun Sidebar(
             selected = app.screen == Screen.Playlists && app.openPlaylistId == null,
         ) {
             app.screen = Screen.Playlists
+            app.openPlaylistId = null
+            app.collection = null
+        }
+        Spacer(Modifier.height(2.dp))
+        SidebarItem(
+            label = "Online",
+            icon = CadenceIcons.Search,
+            selected = app.screen == Screen.Online,
+        ) {
+            app.screen = Screen.Online
             app.openPlaylistId = null
             app.collection = null
         }
@@ -548,6 +604,16 @@ private fun MobileNavBar(app: AppState) {
             modifier = Modifier.weight(1f),
         ) {
             app.screen = Screen.Playlists
+            app.openPlaylistId = null
+            app.collection = null
+        }
+        MobileNavItem(
+            label = "Online",
+            icon = CadenceIcons.Search,
+            selected = app.screen == Screen.Online,
+            modifier = Modifier.weight(1f),
+        ) {
+            app.screen = Screen.Online
             app.openPlaylistId = null
             app.collection = null
         }

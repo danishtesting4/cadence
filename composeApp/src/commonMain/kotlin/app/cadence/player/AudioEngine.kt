@@ -21,7 +21,7 @@ interface AudioEngine {
     val state: StateFlow<EngineState>
     val events: Flow<EngineEvent>
 
-    fun setSource(track: Track, playWhenReady: Boolean)
+    fun setSource(track: Track, playWhenReady: Boolean, headers: Map<String, String> = emptyMap())
     fun play()
     fun pause()
     fun seekTo(positionMs: Long)

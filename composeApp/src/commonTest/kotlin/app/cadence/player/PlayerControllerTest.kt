@@ -34,7 +34,7 @@ private class FakeAudioEngine : AudioEngine {
     var playCalls = 0
     var pauseCalls = 0
 
-    override fun setSource(track: Track, playWhenReady: Boolean) {
+    override fun setSource(track: Track, playWhenReady: Boolean, headers: Map<String, String>) {
         loaded += track
         _state.value = EngineState(
             isPlaying = playWhenReady,

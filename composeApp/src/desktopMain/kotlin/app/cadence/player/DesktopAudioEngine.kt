@@ -70,7 +70,7 @@ class DesktopAudioEngine : AudioEngine {
         }
     }
 
-    override fun setSource(track: Track, playWhenReady: Boolean) {
+    override fun setSource(track: Track, playWhenReady: Boolean, headers: Map<String, String>) {
         stopWorker()
         currentTrack = track
         playRequested = playWhenReady
