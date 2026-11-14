@@ -113,7 +113,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Exe, TargetFormat.Deb)
             packageName = "Cadence"
-            packageVersion = "0.1.1"
+            packageVersion = "1.0.1"
             description = "A free, open-source music player"
             vendor = "Cadence"
 
